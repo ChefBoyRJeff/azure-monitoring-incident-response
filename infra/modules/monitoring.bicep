@@ -19,6 +19,12 @@ param monitoredResourceGroupName string
 @description('VM watched by the CPU metric alert (in the monitored resource group)')
 param cpuAlertVmName string
 
+@description('Workbook resource name (a GUID)')
+param workbookName string
+
+@description('Workbook title shown in the portal')
+param workbookDisplayName string
+
 @description('Tags applied to every resource')
 param tags object
 
@@ -191,6 +197,26 @@ resource cpuHighAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
         webHookProperties: {}
       }
     ]
+  }
+}
+
+// --- Workbook (M5) -----------------------------------------------------------
+// Built in the portal, then exported with canFetchContent=true. The committed content file has the
+// subscription ID replaced by the token {subscriptionId}; replace() puts the real value back at deploy time.
+// Workbooks are named by GUID (this one was created by the portal); the title is displayName.
+resource workbook 'Microsoft.Insights/workbooks@2023-06-01' = {
+  name: workbookName
+  location: location
+  kind: 'shared'
+  tags: union(tags, {
+    'hidden-title': workbookDisplayName // the portal sets this tag; kept so what-if doesn't remove it
+  })
+  properties: {
+    displayName: workbookDisplayName
+    category: 'workbook'
+    sourceId: 'azure monitor'
+    version: 'Notebook/1.0'
+    serializedData: replace(loadTextContent('../workbooks/lab-operations.workbook'), '{subscriptionId}', subscription().subscriptionId)
   }
 }
 

@@ -1,0 +1,44 @@
+Note: The result may contain false positive predictions (noise).
+You can help us improve the accuracy of the result by opening an issue here: https://aka.ms/WhatIfIssues
+NOTICE! - Want to get What-if without noise? Move to Deployment Stacks What-If https://aka.ms/stackswhatifGA
+
+Resource and property changes are indicated with these symbols:
+  + Create
+  ~ Modify
+  = Nochange
+  x Noeffect
+
+The deployment will update the following scopes:
+
+Scope: /subscriptions/<guid>
+
+  = Microsoft.Insights/diagnosticSettings/diag-activitylog-to-law [2021-05-01-preview]
+  = resourceGroups/rg-monitoring-lab [2024-03-01]
+
+Scope: /subscriptions/<guid>/resourceGroups/rg-monitoring-lab
+
+  ~ Microsoft.Insights/actionGroups/ag-lab-ops [2023-01-01]
+    ~ properties.emailReceivers: [
+      ~ 0:
+
+        ~ emailAddress: "<redacted-email>" => "[parameters('alertEmail')]"
+
+      ]
+
+  ~ Microsoft.Insights/workbooks/<guid> [2023-06-01]
+    + properties.serializedData: "{"version":"Notebook/1.0","items":[{"type":1,"content":{"json":"## Lab Operations: Incidents and Changes"},"name":"text - 5"},{"type":3,"content":{"version":"KqlItem/1.0","query":"alertsmanagementresources\r\n| where type =~ \"microsoft.alertsmanagement/alerts\"\r\n| extend e = properties.essentials\r\n| project Fired = todatetime(e.startDateTime),\r\n          Rule = extract(@\"([^/]+)$\", 1, tostring(e.alertRule)),\r\n          Target = extract(@\"([^/]+)$\", 1, tostring(e.targetResource)),\r\n          Condition = tostring(e.monitorCondition),\r\n          State = tostring(e.alertState),\r\n          Severity = tostring(e.severity)\r\n| order by Fired desc","size":0,"title":"Alert History","queryType":1,"resourceType":"microsoft.resourcegraph/resources","crossComponentResources":["/subscriptions/<guid>"],"visualization":"table"},"name":"Alert History Query"},{"type":3,"content":{"version":"KqlItem/1.0","query":"AzureActivity\r\n| where OperationNameValue has_any (\"virtualMachines/start/action\", \"virtualMachines/deallocate/action\")\r\n| where ActivityStatusValue in~ (\"Succeeded\", \"Success\")\r\n| extend VM = extract(@\"(?i)virtualmachines/([^/]+)\", 1, _ResourceId)\r\n| extend Action = iff(OperationNameValue has \"start\", \"Started\", \"Deallocated\")\r\n| project TimeGenerated, VM, Action\r\n| order by TimeGenerated asc","size":0,"title":"VM power events","timeContext":{"durationMs":86400000},"queryType":0,"resourceType":"microsoft.operationalinsights/workspaces","crossComponentResources":["/subscriptions/<guid>/resourceGroups/rg-monitoring-lab/providers/Microsoft.OperationalInsights/workspaces/law-monitoring-lab"],"visualization":"table"},"name":"Query B"},{"type":3,"content":{"version":"KqlItem/1.0","query":"let deployments = AzureActivity\r\n    | where OperationNameValue =~ \"Microsoft.Resources/deployments/write\"\r\n    | distinct CorrelationId;\r\nAzureActivity\r\n| where OperationNameValue has \"Microsoft.Network/networkSecurityGroups\"\r\n| where ActivityStatusValue in~ (\"Succeeded\", \"Success\")\r\n| extend NSG = extract(@\"(?i)networksecuritygroups/([^/]+)\", 1, _ResourceId)\r\n| extend Source = iff(CorrelationId in (deployments), \"Code (deployment)\", \"Manual (no deployment)\")\r\n| project TimeGenerated, NSG, Operation = OperationNameValue, Source, Correlation = substring(CorrelationId, 0, 8)\r\n| order by TimeGenerated asc","size":0,"title":"NSG changes: manual vs. code","timeContext":{"durationMs":86400000},"queryType":0,"resourceType":"microsoft.operationalinsights/workspaces","crossComponentResources":["/subscriptions/<guid>/resourceGroups/rg-monitoring-lab/providers/Microsoft.OperationalInsights/workspaces/law-monitoring-lab"],"visualization":"table"},"name":"Query A"},{"type":10,"content":{"chartId":"workbook<guid>","version":"MetricsItem/2.0","size":0,"chartType":2,"resourceType":"microsoft.compute/virtualmachines","metricScope":0,"resourceIds":["/subscriptions/<guid>/resourceGroups/rg-hubspoke-vms/providers/Microsoft.Compute/virtualMachines/vm-spoke-lab2"],"timeContext":{"durationMs":86400000},"metrics":[{"namespace":"microsoft.compute/virtualmachines","metric":"microsoft.compute/virtualmachines-Other-Percentage CPU","aggregation":4,"splitBy":null}],"title":"VM Percentage CPU - Metric","gridSettings":{"rowLimit":10000}},"name":"Percentage CPU"}],"isLocked":false,"fallbackResourceIds":["Azure Monitor"]}"
+    x tags.hidden-title:         "Lab Operations - Incidents and Changes"
+
+  = Microsoft.Insights/activityLogAlerts/alert-nsg-rule-deleted [2020-10-01]
+  = Microsoft.Insights/activityLogAlerts/alert-vm-deallocated [2020-10-01]
+  = Microsoft.Insights/activityLogAlerts/alert-vm-started [2020-10-01]
+  = Microsoft.Insights/metricAlerts/alert-vm-spoke-cpu-high [2018-03-01]
+  = Microsoft.OperationalInsights/workspaces/law-monitoring-lab [2025-07-01]
+    x properties.features:
+
+        enableLogAccessUsingOnlyResourcePermissions: true
+
+
+Resource changes: 2 to modify, 7 no change.
+
+

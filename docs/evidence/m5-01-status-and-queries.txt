@@ -1,0 +1,51 @@
+Project 2 status check, 2026-10-25 19:04:14 local (read-only)
+=== VM power state (expect VM deallocated) ===
+  vm-hub-lab2: VM deallocated
+  vm-spoke-lab2: VM deallocated
+=== nsg-spoke-lab2 inbound rules (expect 100, 110, 120, 4000) ===
+  100   Allow-SSH-From-Hub-Shared  Allow
+  110   Allow-ICMP-From-Hub        Allow
+  120   Allow-Intra-Subnet         Allow
+  4000  Deny-VNet-Inbound          Deny
+=== Alert rules in rg-monitoring-lab ===
+  activity-log  alert-vm-started           enabled=True
+  activity-log  alert-vm-deallocated       enabled=True
+  activity-log  alert-nsg-rule-deleted     enabled=True
+  metric        alert-vm-spoke-cpu-high    enabled=True severity=2
+=== Fired alerts, last 1 day (Alerts Management API) ===
+  2026-10-25 18:49:29Z  alert-vm-deallocated       target=vm-spoke-lab2    condition=Fired     state=Closed
+  2026-10-25 18:49:29Z  alert-vm-started           target=vm-spoke-lab2    condition=Fired     state=Closed
+  2026-10-25 22:29:28Z  alert-vm-started           target=vm-spoke-lab2    condition=Fired     state=New
+  2026-10-25 22:29:28Z  alert-vm-started           target=vm-hub-lab2      condition=Fired     state=New
+  2026-10-25 22:34:20Z  alert-vm-spoke-cpu-high    target=vm-spoke-lab2    condition=Fired     state=New
+  2026-10-25 22:39:28Z  alert-nsg-rule-deleted     target=nsg-spoke-lab2   condition=Fired     state=New
+  2026-10-25 22:40:22Z  alert-vm-spoke-cpu-high    target=vm-spoke-lab2    condition=Resolved  state=New
+  2026-10-25 22:44:29Z  alert-nsg-rule-deleted     target=nsg-spoke-lab2   condition=Fired     state=New
+  2026-10-25 22:44:29Z  alert-nsg-rule-deleted     target=nsg-hub-lab2     condition=Fired     state=New
+  2026-10-25 22:54:28Z  alert-vm-deallocated       target=vm-hub-lab2      condition=Fired     state=New
+  2026-10-25 22:54:28Z  alert-vm-started           target=vm-spoke-lab2    condition=Fired     state=New
+  2026-10-25 22:54:28Z  alert-vm-started           target=vm-hub-lab2      condition=Fired     state=New
+  2026-10-25 22:59:28Z  alert-vm-deallocated       target=vm-spoke-lab2    condition=Fired     state=New
+=== KQL: A. NSG changes, manual vs. code (CorrelationId join) ===
+  TimeGenerated | NSG | Operation | Source | Correlation
+  10/25/2026 10:23:38 PM | nsg-spoke-lab2 | MICROSOFT.NETWORK/NETWORKSECURITYGROUPS/WRITE | Manual (no deployment) | bcd7133e
+  10/25/2026 10:38:36 PM | nsg-hub-lab2 | MICROSOFT.NETWORK/NETWORKSECURITYGROUPS/WRITE | Code (deployment) | e4273fbf
+  10/25/2026 10:38:37 PM | nsg-spoke-lab2 | MICROSOFT.NETWORK/NETWORKSECURITYGROUPS/WRITE | Code (deployment) | e4273fbf
+  rows: 3
+=== KQL: B. VM power events ===
+  TimeGenerated | VM | Action
+  10/25/2026 6:41:33 PM | vm-spoke-lab2 | Started
+  10/25/2026 6:42:15 PM | vm-spoke-lab2 | Deallocated
+  10/25/2026 10:25:28 PM | vm-hub-lab2 | Started
+  10/25/2026 10:26:38 PM | vm-spoke-lab2 | Started
+  10/25/2026 10:48:27 PM | vm-hub-lab2 | Started
+  10/25/2026 10:48:40 PM | vm-spoke-lab2 | Started
+  10/25/2026 10:50:59 PM | vm-hub-lab2 | Deallocated
+  10/25/2026 10:51:38 PM | vm-spoke-lab2 | Deallocated
+  rows: 8
+=== KQL: C. Ingestion cost check (expect _IsBillable False only) ===
+  _IsBillable | Rows
+  False | 294
+  rows: 1
+Done.
+

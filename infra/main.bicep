@@ -20,6 +20,12 @@ param monitoredResourceGroupName string = 'rg-hubspoke-vms'
 @description('VM watched by the CPU metric alert')
 param cpuAlertVmName string = 'vm-spoke-lab2'
 
+@description('Workbook resource name. Workbooks are named by GUID; this is the one the portal created in M5.')
+param workbookName string = '0abd4092-de83-46c2-b27b-5fa7a18a6053'
+
+@description('Workbook title shown in the portal')
+param workbookDisplayName string = 'Lab Operations - Incidents and Changes'
+
 @description('Email address for alert notifications. Supplied from a gitignored *.local.bicepparam file. @secure() keeps it out of deployment history.')
 @secure()
 param alertEmail string
@@ -50,6 +56,8 @@ module monitoring 'modules/monitoring.bicep' = {
     alertEmail: alertEmail
     monitoredResourceGroupName: monitoredResourceGroupName
     cpuAlertVmName: cpuAlertVmName
+    workbookName: workbookName
+    workbookDisplayName: workbookDisplayName
     tags: tags
   }
 }
