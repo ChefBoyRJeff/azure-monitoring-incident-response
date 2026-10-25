@@ -1,0 +1,18 @@
+# Compiled ARM output (generated from Bicep)
+infra/**/*.json
+!infra/**/bicepconfig.json
+
+# Local parameter files: hold real values such as the alert email address. Never commit.
+*.local.bicepparam
+*.local.json
+
+# Raw portal exports (reference only, not committed)
+infra/export/
+
+# Unsanitized screenshots: save originals here, commit only sanitized copies in docs/screenshots/
+docs/screenshots/raw/
+
+# OS and editor clutter
+.DS_Store
+Thumbs.db
+.vscode/
