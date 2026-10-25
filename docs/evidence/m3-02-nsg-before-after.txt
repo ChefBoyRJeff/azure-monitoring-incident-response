@@ -1,0 +1,13 @@
+=== BEFORE break: nsg-spoke-lab2 custom inbound rules, by priority (18:22:31 local) ===
+100   Allow-SSH-From-Hub-Shared  Allow  Tcp   src=10.20.1.0/24
+110   Allow-ICMP-From-Hub        Allow  Icmp  src=10.20.0.0/16
+120   Allow-Intra-Subnet         Allow  *     src=10.21.1.0/24
+4000  Deny-VNet-Inbound          Deny   *     src=VirtualNetwork
+=== VM power state ===
+vm-hub-lab2: VM deallocated
+vm-spoke-lab2: VM deallocated
+=== AFTER break (18:23:56 local) ===
+110   Allow-ICMP-From-Hub        Allow  Icmp  src=10.20.0.0/16
+120   Allow-Intra-Subnet         Allow  *     src=10.21.1.0/24
+4000  Deny-VNet-Inbound          Deny   *     src=VirtualNetwork
+

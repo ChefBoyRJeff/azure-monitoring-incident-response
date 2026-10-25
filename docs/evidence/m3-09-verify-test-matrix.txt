@@ -1,0 +1,74 @@
+Lab2 connectivity test matrix, 2026-10-25 18:48:24
+Starting vm-hub-lab2...
+Starting vm-spoke-lab2...
+=== Power state after start ===
+vm-hub-lab2: VM running
+vm-spoke-lab2: VM running
+=== Effective NSG associations on vm-hub-lab2100 (expect one NSG, via subnet) ===
+NSG=nsg-hub-lab2  subnet=snet-hub-shared  nic=  effectiveRules=9
+NSG=  subnet=  nic=  effectiveRules=1
+=== VNet routes on vm-hub-lab2100 (VnetLocal and VNetPeering only) ===
+Default  10.20.0.0/16       VnetLocal    Active
+Default  10.21.0.0/16       VNetPeering  Active
+(+90 platform default routes not shown)
+=== Effective NSG associations on vm-spoke-lab2403 (expect one NSG, via subnet) ===
+NSG=nsg-spoke-lab2  subnet=snet-spoke-workload  nic=  effectiveRules=10
+NSG=  subnet=  nic=  effectiveRules=1
+=== VNet routes on vm-spoke-lab2403 (VnetLocal and VNetPeering only) ===
+Default  10.21.0.0/16       VnetLocal    Active
+Default  10.20.0.0/16       VNetPeering  Active
+(+90 platform default routes not shown)
+=== Reachability tests from vm-hub-lab2 (10.20.1.4) ===
+Enable succeeded: 
+[stdout]
+PING 10.21.1.4 (10.21.1.4) 56(84) bytes of data.
+
+--- 10.21.1.4 ping statistics ---
+3 packets transmitted, 3 received, 0% packet loss, time 2004ms
+rtt min/avg/max/mdev = 1.951/2.983/4.262/0.959 ms
+RESULT_1=0
+RESULT_2=0
+RESULT_3=1
+
+[stderr]
+Connection to 10.21.1.4 22 port [tcp/ssh] succeeded!
+nc: connect to 10.21.1.4 port 8080 (tcp) timed out: Operation now in progress
+
+=== Reachability tests from vm-spoke-lab2 (10.21.1.4) ===
+Enable succeeded: 
+[stdout]
+PING 10.20.1.4 (10.20.1.4) 56(84) bytes of data.
+
+--- 10.20.1.4 ping statistics ---
+3 packets transmitted, 3 received, 0% packet loss, time 2004ms
+rtt min/avg/max/mdev = 1.874/2.185/2.393/0.224 ms
+RESULT_4=0
+RESULT_5=1
+
+[stderr]
+nc: connect to 10.20.1.4 port 22 (tcp) timed out: Operation now in progress
+
+=== IP flow verify ===
+IPflow: TCP 22 into vm-spoke-lab2 from vm-hub-lab2 : access=Allow rule=securityRules/Allow-SSH-From-Hub-Shared
+IPflow: TCP 8080 into vm-spoke-lab2 from vm-hub-lab2 : access=Deny rule=securityRules/Deny-VNet-Inbound
+IPflow: TCP 22 into vm-hub-lab2 from vm-spoke-lab2 : access=Deny rule=securityRules/Deny-VNet-Inbound
+Deallocating vm-hub-lab2...
+Deallocating vm-spoke-lab2...
+=== Final power state (expect VM deallocated) ===
+vm-hub-lab2: VM deallocated
+vm-spoke-lab2: VM deallocated
+Elapsed from start to deallocated: 3.5 min
+=== Summary ===
+
+Status Test                                                 Expected                        Actual                          Detail
+------ ----                                                 --------                        ------                          ------
+PASS   1. vm-hub-lab2 -> vm-spoke-lab2 ping                 open                            open                            spoke 110 Allow-ICMP-From-Hub
+PASS   2. vm-hub-lab2 -> vm-spoke-lab2 TCP 22               open                            open                            spoke 100 Allow-SSH-From-Hub-Shared
+PASS   3. vm-hub-lab2 -> vm-spoke-lab2 TCP 8080             blocked                         blocked                         spoke 4000 Deny-VNet-Inbound
+PASS   4. vm-spoke-lab2 -> vm-hub-lab2 ping                 open                            open                            hub 100 Allow-ICMP-From-Spoke
+PASS   5. vm-spoke-lab2 -> vm-hub-lab2 TCP 22               blocked                         blocked                         hub 4000 Deny-VNet-Inbound
+PASS   IPflow: TCP 22 into vm-spoke-lab2 from vm-hub-lab2   Allow/Allow-SSH-From-Hub-Shared Allow/Allow-SSH-From-Hub-Shared securityRules/Allow-SSH-From-Hub-Shared
+PASS   IPflow: TCP 8080 into vm-spoke-lab2 from vm-hub-lab2 Deny/Deny-VNet-Inbound          Deny/Deny-VNet-Inbound          securityRules/Deny-VNet-Inbound
+PASS   IPflow: TCP 22 into vm-hub-lab2 from vm-spoke-lab2   Deny/Deny-VNet-Inbound          Deny/Deny-VNet-Inbound          securityRules/Deny-VNet-Inbound
+Result: 8 of 8 PASS
+

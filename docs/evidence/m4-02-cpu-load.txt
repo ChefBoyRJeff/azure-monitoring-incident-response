@@ -1,0 +1,13 @@
+=== M4: VM start and CPU load (approved VM window) ===
+start vm-hub-lab2 requested:  18:24:35
+start vm-hub-lab2 completed:  18:25:48  exit 0
+start vm-spoke-lab2 requested:  18:25:48
+start vm-spoke-lab2 completed:  18:27:01  exit 0
+--- cpu-load.sh on vm-spoke-lab2 ---
+Enable succeeded: 
+[stdout]
+cpu load started for 720s at 22:27:03Z
+
+[stderr]
+
+

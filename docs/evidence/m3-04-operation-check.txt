@@ -1,0 +1,12 @@
+=== Source Activity log: all NSG operations in rg-hubspoke-vms, last 1h (18:32:58 local) ===
+22:23:36Z  Microsoft.Network/networkSecurityGroups/write                  Started    nsg-spoke-lab2
+22:23:36Z  Microsoft.Network/networkSecurityGroups/write                  Accepted   nsg-spoke-lab2
+22:23:38Z  Microsoft.Network/networkSecurityGroups/write                  Succeeded  nsg-spoke-lab2
+
+=== Fired alerts, last 2h (18:34:50 local) ===
+18:49:29Z  alert-vm-deallocated       target=vm-spoke-lab2    condition=Fired     state=Closed
+18:49:29Z  alert-vm-started           target=vm-spoke-lab2    condition=Fired     state=Closed
+22:29:28Z  alert-vm-started           target=vm-spoke-lab2    condition=Fired     state=New
+22:29:28Z  alert-vm-started           target=vm-hub-lab2      condition=Fired     state=New
+22:34:20Z  alert-vm-spoke-cpu-high    target=vm-spoke-lab2    condition=Fired     state=New
+

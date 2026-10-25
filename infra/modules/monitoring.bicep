@@ -70,19 +70,29 @@ var activityLogAlertRules = [
   {
     name: 'alert-vm-started' // M2: compute billing begins
     // Microsoft.Compute, not Microsoft.DevTestLab: the portal lists look-alike signals.
-    operationName: 'Microsoft.Compute/virtualMachines/start/action'
+    operationNames: [
+      'Microsoft.Compute/virtualMachines/start/action'
+    ]
     description: 'A VM in ${monitoredResourceGroupName} was started (compute billing begins).'
   }
   {
     name: 'alert-vm-deallocated' // M2: compute billing stops
-    operationName: 'Microsoft.Compute/virtualMachines/deallocate/action'
+    operationNames: [
+      'Microsoft.Compute/virtualMachines/deallocate/action'
+    ]
     description: 'A VM in ${monitoredResourceGroupName} was deallocated (compute billing stops).'
   }
   {
     name: 'alert-nsg-rule-deleted' // M3: detection for an unplanned access change
-    // Rule-level delete; deleting a whole NSG is a different operation (networkSecurityGroups/delete).
-    operationName: 'Microsoft.Network/networkSecurityGroups/securityRules/delete'
-    description: 'A security rule was deleted from an NSG in ${monitoredResourceGroupName} (possible unplanned access change).'
+    // M3 finding: removing a rule can surface as EITHER operation. The CLI (az network nsg rule delete) uses
+    // securityRules/delete; the portal and Bicep re-save the whole NSG (networkSecurityGroups/write). Matching
+    // only the first missed the portal deletion. networkSecurityGroups/write also fires on any other NSG change
+    // (noisier, but no silent miss). anyOf can't be built in the portal wizard: this condition is code-only.
+    operationNames: [
+      'Microsoft.Network/networkSecurityGroups/securityRules/delete'
+      'Microsoft.Network/networkSecurityGroups/write'
+    ]
+    description: 'A security rule was removed or an NSG was changed in ${monitoredResourceGroupName} (possible unplanned access change).'
   }
 ]
 
@@ -102,10 +112,19 @@ resource activityLogAlert 'Microsoft.Insights/activityLogAlerts@2020-10-01' = [f
           field: 'category'
           equals: 'Administrative'
         }
-        {
-          field: 'operationName'
-          equals: rule.operationName
-        }
+        // One operation: a plain leaf condition (exactly what the portal stores, so what-if stays NoChange).
+        // Several operations: anyOf, which matches if any one of them occurs.
+        length(rule.operationNames) == 1
+          ? {
+              field: 'operationName'
+              equals: rule.operationNames[0]
+            }
+          : {
+              anyOf: map(rule.operationNames, op => {
+                field: 'operationName'
+                equals: op
+              })
+            }
         {
           // Only the completed operation, so one email per action instead of Started/Accepted/Succeeded.
           field: 'status'

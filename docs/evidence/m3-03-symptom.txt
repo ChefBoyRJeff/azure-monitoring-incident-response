@@ -1,0 +1,10 @@
+=== M3 symptom: hub -> spoke TCP 22 after the rule deletion ===
+Enable succeeded: 
+[stdout]
+check at 22:27:38Z
+RESULT_tcp22=1
+
+[stderr]
+nc: connect to 10.21.1.4 port 22 (tcp) timed out: Operation now in progress
+
+

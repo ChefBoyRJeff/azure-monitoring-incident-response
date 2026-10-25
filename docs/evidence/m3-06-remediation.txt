@@ -1,0 +1,21 @@
+=== M3 remediation: redeploy Lab 2 Bicep (drift correction); also the test trigger for the detection fix ===
+deploy requested:  18:38:28 local
+State      Duration
+---------  ------------
+Succeeded  PT4.1911983S
+deploy completed:  18:39:06 local
+=== AFTER remediation: nsg-spoke-lab2 rules ===
+100   Allow-SSH-From-Hub-Shared  Allow  Tcp   src=10.20.1.0/24
+110   Allow-ICMP-From-Hub        Allow  Icmp  src=10.20.0.0/16
+120   Allow-Intra-Subnet         Allow  *     src=10.21.1.0/24
+4000  Deny-VNet-Inbound          Deny   *     src=VirtualNetwork
+=== Quick functional check: hub -> spoke TCP 22 ===
+Enable succeeded: 
+[stdout]
+check at 22:39:14Z
+RESULT_tcp22=0
+
+[stderr]
+Connection to 10.21.1.4 22 port [tcp/ssh] succeeded!
+
+
