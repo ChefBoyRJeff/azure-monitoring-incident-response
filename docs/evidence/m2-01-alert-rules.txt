@@ -1,0 +1,9 @@
+=== Activity log alert rules in rg-monitoring-lab ===
+name=alert-vm-started  enabled=True  location=global
+  scope=rg-hubspoke-vms
+  conditions=category=Administrative; operationName=Microsoft.Compute/virtualMachines/start/action; status=containsAny[succeeded]
+  actionGroups=ag-lab-ops
+name=alert-vm-deallocated  enabled=True  location=global
+  scope=rg-hubspoke-vms
+  conditions=category=Administrative; operationName=Microsoft.Compute/virtualMachines/deallocate/action; status=containsAny[succeeded]
+  actionGroups=ag-lab-ops

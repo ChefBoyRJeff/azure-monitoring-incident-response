@@ -1,0 +1,8 @@
+=== M2 test: start, then deallocate vm-spoke-lab2 (approved) ===
+start requested:      14:40:43
+start completed:      14:41:55  exit 0
+deallocate requested: 14:41:55
+deallocate completed: 14:42:28  exit 0
+=== Power state after test ===
+vm-hub-lab2: VM deallocated
+vm-spoke-lab2: VM deallocated
