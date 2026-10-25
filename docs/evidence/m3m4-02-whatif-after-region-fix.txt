@@ -1,0 +1,38 @@
+Note: The result may contain false positive predictions (noise).
+You can help us improve the accuracy of the result by opening an issue here: https://aka.ms/WhatIfIssues
+NOTICE! - Want to get What-if without noise? Move to Deployment Stacks What-If https://aka.ms/stackswhatifGA
+
+Resource and property changes are indicated with these symbols:
+  ~ Modify
+  = Nochange
+  x Noeffect
+
+The deployment will update the following scopes:
+
+Scope: /subscriptions/<guid>
+
+  = Microsoft.Insights/diagnosticSettings/diag-activitylog-to-law [2021-05-01-preview]
+  = resourceGroups/rg-monitoring-lab [2024-03-01]
+
+Scope: /subscriptions/<guid>/resourceGroups/rg-monitoring-lab
+
+  ~ Microsoft.Insights/actionGroups/ag-lab-ops [2023-01-01]
+    ~ properties.emailReceivers: [
+      ~ 0:
+
+        ~ emailAddress: "<redacted-email>" => "[parameters('alertEmail')]"
+
+      ]
+
+  = Microsoft.Insights/activityLogAlerts/alert-nsg-rule-deleted [2020-10-01]
+  = Microsoft.Insights/activityLogAlerts/alert-vm-deallocated [2020-10-01]
+  = Microsoft.Insights/activityLogAlerts/alert-vm-started [2020-10-01]
+  = Microsoft.Insights/metricAlerts/alert-vm-spoke-cpu-high [2018-03-01]
+  = Microsoft.OperationalInsights/workspaces/law-monitoring-lab [2025-07-01]
+    x properties.features:
+
+        enableLogAccessUsingOnlyResourcePermissions: true
+
+
+Resource changes: 1 to modify, 7 no change.
+

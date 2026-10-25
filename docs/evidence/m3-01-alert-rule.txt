@@ -1,0 +1,19 @@
+=== Activity log alert rules in rg-monitoring-lab (M3 adds alert-nsg-rule-deleted) ===
+name=alert-vm-started  enabled=True  location=global
+  scope=rg-hubspoke-vms
+  conditions=category=Administrative; operationName=Microsoft.Compute/virtualMachines/start/action; status=containsAny[succeeded]
+  actionGroups=ag-lab-ops
+name=alert-vm-deallocated  enabled=True  location=global
+  scope=rg-hubspoke-vms
+  conditions=category=Administrative; operationName=Microsoft.Compute/virtualMachines/deallocate/action; status=containsAny[succeeded]
+  actionGroups=ag-lab-ops
+name=alert-nsg-rule-deleted  enabled=True  location=global
+  scope=rg-hubspoke-vms
+  conditions=category=Administrative; operationName=Microsoft.Network/networkSecurityGroups/securityRules/delete; status=containsAny[succeeded]
+  actionGroups=ag-lab-ops
+
+=== Finding: rule first created in the wrong resource group ===
+The first attempt created alert-nsg-rule-deleted in rg-hubspoke-vms (the monitored workload's RG) instead of rg-monitoring-lab.
+Likely cause: the alert wizard's Details > Resource group field pre-fills from the selected scope's RG.
+Impact if left: Project 2 teardown would miss it; deleting the Lab 2 RG would delete monitoring with the workload; outside the Bicep-managed RG, so invisible to what-if.
+Fix: recreated in rg-monitoring-lab and removed the misplaced copy. Verified subscription-wide: all 3 Activity log alert rules in rg-monitoring-lab.

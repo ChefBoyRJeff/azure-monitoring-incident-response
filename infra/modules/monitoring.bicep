@@ -16,6 +16,9 @@ param alertEmail string
 @description('Resource group whose VMs are monitored for power events')
 param monitoredResourceGroupName string
 
+@description('VM watched by the CPU metric alert (in the monitored resource group)')
+param cpuAlertVmName string
+
 @description('Tags applied to every resource')
 param tags object
 
@@ -59,30 +62,37 @@ resource actionGroup 'Microsoft.Insights/actionGroups@2023-01-01' = {
   }
 }
 
-// --- Activity log alerts: VM power events (M2) -----------------------------
+// --- Activity log alerts (M2, M3) --------------------------------------------
 // Evaluated directly against the Activity log (no workspace or query). Free.
 // Measured detection time in testing: about 7-8 minutes from event to alert.
 // Note: Activity log alert rules have no severity setting; the portal shows them as Sev 4 (Verbose).
-var vmPowerAlerts = [
+var activityLogAlertRules = [
   {
-    name: 'alert-vm-started'
-    operation: 'start'
+    name: 'alert-vm-started' // M2: compute billing begins
+    // Microsoft.Compute, not Microsoft.DevTestLab: the portal lists look-alike signals.
+    operationName: 'Microsoft.Compute/virtualMachines/start/action'
     description: 'A VM in ${monitoredResourceGroupName} was started (compute billing begins).'
   }
   {
-    name: 'alert-vm-deallocated'
-    operation: 'deallocate'
+    name: 'alert-vm-deallocated' // M2: compute billing stops
+    operationName: 'Microsoft.Compute/virtualMachines/deallocate/action'
     description: 'A VM in ${monitoredResourceGroupName} was deallocated (compute billing stops).'
+  }
+  {
+    name: 'alert-nsg-rule-deleted' // M3: detection for an unplanned access change
+    // Rule-level delete; deleting a whole NSG is a different operation (networkSecurityGroups/delete).
+    operationName: 'Microsoft.Network/networkSecurityGroups/securityRules/delete'
+    description: 'A security rule was deleted from an NSG in ${monitoredResourceGroupName} (possible unplanned access change).'
   }
 ]
 
-resource vmPowerAlert 'Microsoft.Insights/activityLogAlerts@2020-10-01' = [for alert in vmPowerAlerts: {
-  name: alert.name
+resource activityLogAlert 'Microsoft.Insights/activityLogAlerts@2020-10-01' = [for rule in activityLogAlertRules: {
+  name: rule.name
   location: 'global'
   tags: tags
   properties: {
     enabled: true
-    description: alert.description
+    description: rule.description
     scopes: [
       '${subscription().id}/resourceGroups/${monitoredResourceGroupName}'
     ]
@@ -93,9 +103,8 @@ resource vmPowerAlert 'Microsoft.Insights/activityLogAlerts@2020-10-01' = [for a
           equals: 'Administrative'
         }
         {
-          // Microsoft.Compute, not Microsoft.DevTestLab: the portal lists look-alike signals.
           field: 'operationName'
-          equals: 'Microsoft.Compute/virtualMachines/${alert.operation}/action'
+          equals: rule.operationName
         }
         {
           // Only the completed operation, so one email per action instead of Started/Accepted/Succeeded.
@@ -116,7 +125,58 @@ resource vmPowerAlert 'Microsoft.Insights/activityLogAlerts@2020-10-01' = [for a
   }
 }]
 
+// --- Metric alert: high CPU on the spoke VM (M4) -----------------------------
+// Platform metric (no agent). Billed per monitored time series: portal estimate USD 0.10/month for this rule.
+// autoMitigate: the alert resolves on its own when CPU drops back below the threshold.
+resource monitoredVm 'Microsoft.Compute/virtualMachines@2024-07-01' existing = {
+  name: cpuAlertVmName
+  scope: resourceGroup(monitoredResourceGroupName)
+}
+
+resource cpuHighAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
+  name: 'alert-vm-spoke-cpu-high'
+  location: 'global'
+  tags: tags
+  properties: {
+    description: 'Average CPU on ${cpuAlertVmName} above 80% over 5 minutes.'
+    severity: 2 // Warning
+    enabled: true
+    scopes: [
+      monitoredVm.id
+    ]
+    evaluationFrequency: 'PT1M' // check every minute
+    windowSize: 'PT5M' // average over the last 5 minutes
+    targetResourceType: 'Microsoft.Compute/virtualMachines'
+    // The VM's region. Uses the location param (eastus) rather than monitoredVm.location, because what-if can't
+    // evaluate reference() and would report a false change on every run. Assumes the VM shares the monitoring region.
+    targetResourceRegion: location
+    autoMitigate: true
+    criteria: {
+      'odata.type': 'Microsoft.Azure.Monitor.MultipleResourceMultipleMetricCriteria'
+      allOf: [
+        {
+          criterionType: 'StaticThresholdCriterion'
+          name: 'Metric1'
+          metricNamespace: 'Microsoft.Compute/virtualMachines'
+          metricName: 'Percentage CPU'
+          timeAggregation: 'Average'
+          operator: 'GreaterThan'
+          threshold: 80
+          skipMetricValidation: false
+        }
+      ]
+    }
+    actions: [
+      {
+        actionGroupId: actionGroup.id
+        webHookProperties: {}
+      }
+    ]
+  }
+}
+
 output workspaceId string = workspace.id
 output workspaceName string = workspace.name
 output actionGroupId string = actionGroup.id
-output vmPowerAlertNames array = [for (alert, i) in vmPowerAlerts: vmPowerAlert[i].name]
+output activityLogAlertNames array = [for (rule, i) in activityLogAlertRules: activityLogAlert[i].name]
+output cpuAlertName string = cpuHighAlert.name

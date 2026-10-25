@@ -17,6 +17,9 @@ param actionGroupName string = 'ag-lab-ops'
 @description('Resource group whose VMs are monitored for power events (Lab 2 in azure-hub-spoke-network)')
 param monitoredResourceGroupName string = 'rg-hubspoke-vms'
 
+@description('VM watched by the CPU metric alert')
+param cpuAlertVmName string = 'vm-spoke-lab2'
+
 @description('Email address for alert notifications. Supplied from a gitignored *.local.bicepparam file. @secure() keeps it out of deployment history.')
 @secure()
 param alertEmail string
@@ -46,6 +49,7 @@ module monitoring 'modules/monitoring.bicep' = {
     actionGroupName: actionGroupName
     alertEmail: alertEmail
     monitoredResourceGroupName: monitoredResourceGroupName
+    cpuAlertVmName: cpuAlertVmName
     tags: tags
   }
 }
@@ -74,4 +78,5 @@ resource activityLogToWorkspace 'Microsoft.Insights/diagnosticSettings@2021-05-0
 
 output workspaceName string = monitoring.outputs.workspaceName
 output actionGroupId string = monitoring.outputs.actionGroupId
-output vmPowerAlertNames array = monitoring.outputs.vmPowerAlertNames
+output activityLogAlertNames array = monitoring.outputs.activityLogAlertNames
+output cpuAlertName string = monitoring.outputs.cpuAlertName
