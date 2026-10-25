@@ -19,3 +19,11 @@ setting=diag-activitylog-to-law  workspaceIdMatches=True  destinationType=  stor
 10/25/2026 4:20:00 PM  Microsoft.Resources/tags/write           Succeeded
 10/25/2026 4:19:59 PM  Microsoft.Resources/tags/write           Started
 === Status at 12:59 local: configuration verified end-to-end (Checks 4-6); waiting on first delivery. Decision point 14:00 local. ===
+
+=== Resolution at 13:20 local ===
+AzureActivity appeared. 27 rows; _IsBillable = False for all (free ingestion confirmed).
+First exported event: 17:04:09 UTC (13:04 local). First ingestion: 17:10:51 UTC (13:10 local).
+Latency once flowing: avg 4.6 min, max 8 min.
+Events at 12:20 and 12:45 local (tags/write, present in the source Activity log) are NOT in the workspace.
+Conclusion: configuration was correct; the new setting took ~45 min to start exporting, and events in that window were not exported.
+Cause of the activation delay: not determined (no documented cause). Lesson: verify data is flowing before relying on a new diagnostic setting; the Activity log (90 days) remains the source of truth for the gap.
