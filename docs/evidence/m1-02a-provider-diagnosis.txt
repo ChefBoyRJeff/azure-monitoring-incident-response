@@ -1,0 +1,4 @@
+=== Symptom (portal): Failed to create action group. The subscription is not registered to use namespace 'microsoft.insights' ===
+Microsoft.Insights : NotRegistered
+Microsoft.OperationalInsights : Registered
+Microsoft.AlertsManagement : NotRegistered

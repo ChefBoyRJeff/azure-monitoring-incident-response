@@ -1,0 +1,7 @@
+=== Remediation: register resource providers (approved; subscription-wide, no cost) ===
+Microsoft.Insights : register exit 0, took 12 s
+Microsoft.AlertsManagement : register exit 0, took 73 s
+=== Verification ===
+Microsoft.Insights : Registered
+Microsoft.AlertsManagement : Registered
+Microsoft.OperationalInsights : Registered

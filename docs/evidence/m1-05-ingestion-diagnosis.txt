@@ -1,0 +1,21 @@
+=== Case: AzureActivity table empty after creating the subscription diagnostic setting ===
+Symptom: AzureActivity queries return 0 rows (12:23, 12:37-12:40 local). The source Activity log shows 'Write tags' Succeeded at 12:20:00.
+Check 1 (search * last 4h): only table 'Operation', 2 rows, last at 15:54:01 UTC.
+Operation table: 'Daily quota changed to 0.101, previous -1' (15:51:53 UTC); 'Daily quota changed to 0.1, previous 0.101' (15:54:01 UTC). Both Succeeded. No ingestion errors.
+Check 2 (Settings > Tables): AzureActivity NOT listed. Tables present: Alert, AppCenterError, ComputerGroup, InsightsMetrics, Operation, Usage.
+Ruled out: wrong query scope (workspace returns Operation data); daily cap (AzureActivity is free, cap not reached, no cap events).
+Open hypothesis H1: first delivery from the new diagnostic setting is still pending.
+Check 3: fresh test event sent at 2026-10-25 12:45:19 local, exit 0
+
+=== Re-check at 12:55 and 12:57 local: AzureActivity still 0 rows ===
+=== Check 4: setting points at the exact workspace? ===
+setting=diag-activitylog-to-law  workspaceIdMatches=True  destinationType=  storage=False  eventHub=False
+=== Check 5: Activity log record of the setting's creation (last 2h, subscription-wide) ===
+10/25/2026 4:17:25 PM  microsoft.insights/diagnosticSettings/write             Succeeded
+10/25/2026 4:17:23 PM  microsoft.insights/diagnosticSettings/write             Started
+=== Check 6: source still has the test events ===
+10/25/2026 4:45:19 PM  Microsoft.Resources/tags/write           Succeeded
+10/25/2026 4:45:18 PM  Microsoft.Resources/tags/write           Started
+10/25/2026 4:20:00 PM  Microsoft.Resources/tags/write           Succeeded
+10/25/2026 4:19:59 PM  Microsoft.Resources/tags/write           Started
+=== Status at 12:59 local: configuration verified end-to-end (Checks 4-6); waiting on first delivery. Decision point 14:00 local. ===

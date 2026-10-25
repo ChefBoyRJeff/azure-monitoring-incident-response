@@ -1,0 +1,19 @@
+{
+  "emailReceivers": [
+    {
+      "commonSchema": false,
+      "name": "email-ops_-EmailAction-",
+      "status": "Enabled"
+    }
+  ],
+  "enabled": true,
+  "location": "Global",
+  "name": "ag-lab-ops",
+  "shortName": "lab-ops",
+  "tags": {
+    "costCenter": "CC-1001",
+    "environment": "lab",
+    "owner": "jeff",
+    "project": "azure-monitoring-incident-response"
+  }
+}

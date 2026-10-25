@@ -1,0 +1,12 @@
+=== Subscription diagnostic settings ===
+name=diag-activitylog-to-law  workspace=law-monitoring-lab
+  Administrative   enabled=True
+  Security         enabled=True
+  ServiceHealth    enabled=True
+  Alert            enabled=True
+  Recommendation   enabled=True
+  Policy           enabled=True
+  Autoscale        enabled=True
+  ResourceHealth   enabled=True
+=== Test event (harmless tag merge on rg-monitoring-lab) at 2026-10-25 12:19:56 ===
+tag update exit 0

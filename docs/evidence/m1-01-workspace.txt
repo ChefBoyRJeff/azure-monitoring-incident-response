@@ -1,0 +1,14 @@
+{
+  "accessMode": true,
+  "dailyCapGb": 0.1,
+  "location": "eastus",
+  "name": "law-monitoring-lab",
+  "retentionDays": 30,
+  "sku": "pergb2018",
+  "tags": {
+    "costCenter": "CC-1001",
+    "environment": "lab",
+    "owner": "jeff",
+    "project": "azure-monitoring-incident-response"
+  }
+}
