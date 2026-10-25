@@ -1,0 +1,27 @@
+=== Resource group tags (expect the 4 standard tags only) ===
+{
+  "costCenter": "CC-1001",
+  "environment": "lab",
+  "owner": "jeff",
+  "project": "azure-monitoring-incident-response"
+}
+=== Action group receiver (expect Enabled) ===
+[
+  {
+    "commonSchema": false,
+    "name": "email-ops_-EmailAction-",
+    "status": "Enabled"
+  }
+]
+=== Drift check: what-if after deploy ===
+  ~ Modify
+  = Nochange
+  = Microsoft.Insights/diagnosticSettings/diag-activitylog-to-law [2021-05-01-preview]
+  = resourceGroups/rg-monitoring-lab [2024-03-01]
+  ~ Microsoft.Insights/actionGroups/ag-lab-ops [2023-01-01]
+    ~ properties.emailReceivers: [
+      ~ 0:
+        ~ emailAddress: "<redacted-email>" => "[parameters('alertEmail')]"
+  = Microsoft.OperationalInsights/workspaces/law-monitoring-lab [2025-07-01]
+Resource changes: 1 to modify, 3 no change.
+
