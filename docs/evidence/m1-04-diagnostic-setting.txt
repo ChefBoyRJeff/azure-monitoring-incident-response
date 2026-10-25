@@ -10,3 +10,4 @@ name=diag-activitylog-to-law  workspace=law-monitoring-lab
   ResourceHealth   enabled=True
 === Test event (harmless tag merge on rg-monitoring-lab) at 2026-10-25 12:19:56 ===
 tag update exit 0
+

@@ -27,3 +27,4 @@ Latency once flowing: avg 4.6 min, max 8 min.
 Events at 12:20 and 12:45 local (tags/write, present in the source Activity log) are NOT in the workspace.
 Conclusion: configuration was correct; the new setting took ~45 min to start exporting, and events in that window were not exported.
 Cause of the activation delay: not determined (no documented cause). Lesson: verify data is flowing before relying on a new diagnostic setting; the Activity log (90 days) remains the source of truth for the gap.
+

@@ -5,3 +5,4 @@ Microsoft.AlertsManagement : register exit 0, took 73 s
 Microsoft.Insights : Registered
 Microsoft.AlertsManagement : Registered
 Microsoft.OperationalInsights : Registered
+

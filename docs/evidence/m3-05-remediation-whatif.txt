@@ -154,3 +154,4 @@ Scope: /subscriptions/<guid>/resourceGroups/RG-HUBSPOKE-VMS
 
 Resource changes: 7 to modify, 3 no change, 4 to ignore.
 
+

@@ -10,3 +10,4 @@
 22:29:28Z  alert-vm-started           target=vm-hub-lab2      condition=Fired     state=New
 22:34:20Z  alert-vm-spoke-cpu-high    target=vm-spoke-lab2    condition=Fired     state=New
 
+

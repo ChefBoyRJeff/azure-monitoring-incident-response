@@ -36,3 +36,4 @@ Scope: /subscriptions/<guid>/resourceGroups/rg-monitoring-lab
 
 Resource changes: 2 to modify, 2 no change.
 
+

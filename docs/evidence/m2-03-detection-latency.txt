@@ -4,3 +4,4 @@ deallocate  event(Succeeded)=18:42:15Z  alertFired=18:49:29Z  latency=7.2 min  s
 === Alert lifecycle after closing ===
 alert-vm-started       state=New
 alert-vm-deallocated   state=New
+

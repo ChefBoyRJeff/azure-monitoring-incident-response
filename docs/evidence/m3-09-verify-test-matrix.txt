@@ -72,3 +72,4 @@ PASS   IPflow: TCP 8080 into vm-spoke-lab2 from vm-hub-lab2 Deny/Deny-VNet-Inbou
 PASS   IPflow: TCP 22 into vm-hub-lab2 from vm-spoke-lab2   Deny/Deny-VNet-Inbound          Deny/Deny-VNet-Inbound          securityRules/Deny-VNet-Inbound
 Result: 8 of 8 PASS
 
+

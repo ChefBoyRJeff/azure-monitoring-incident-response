@@ -25,3 +25,4 @@
   = Microsoft.OperationalInsights/workspaces/law-monitoring-lab [2025-07-01]
 Resource changes: 1 to modify, 3 no change.
 
+

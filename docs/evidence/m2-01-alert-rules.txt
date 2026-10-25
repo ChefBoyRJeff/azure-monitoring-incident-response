@@ -7,3 +7,4 @@ name=alert-vm-deallocated  enabled=True  location=global
   scope=rg-hubspoke-vms
   conditions=category=Administrative; operationName=Microsoft.Compute/virtualMachines/deallocate/action; status=containsAny[succeeded]
   actionGroups=ag-lab-ops
+

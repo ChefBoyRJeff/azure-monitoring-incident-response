@@ -11,3 +11,4 @@ vm-spoke-lab2: VM deallocated
 120   Allow-Intra-Subnet         Allow  *     src=10.21.1.0/24
 4000  Deny-VNet-Inbound          Deny   *     src=VirtualNetwork
 
+

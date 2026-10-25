@@ -6,3 +6,4 @@ deallocate completed: 14:42:28  exit 0
 === Power state after test ===
 vm-hub-lab2: VM deallocated
 vm-spoke-lab2: VM deallocated
+
