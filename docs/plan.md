@@ -1,6 +1,6 @@
 # Project 2 Plan: Azure Monitoring and Incident Response
 
-**Status:** Plan approved 2026-10-25. Nothing has been deployed yet.
+**Status:** Plan approved 2026-10-25. M1–M6 completed the same day. This is the original plan, kept as written; results and deviations are in the [README](../README.md) and the [RCAs](rca/).
 
 ## Business Problem
 
