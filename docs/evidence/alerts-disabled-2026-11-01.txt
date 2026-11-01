@@ -1,0 +1,15 @@
+=== P2: alert rules disabled (approved 2026-11-01). Reason: their targets (vm-spoke-lab2, rg-hubspoke-vms) were deleted in the P1 Lab 2 teardown. Re-enable after redeploying monitored VMs. ===
+2026-11-01T22:36:34Z  alert-vm-spoke-cpu-high disabled exit=1
+2026-11-01T22:36:36Z  alert-vm-started disabled exit=1
+2026-11-01T22:36:38Z  alert-vm-deallocated disabled exit=1
+2026-11-01T22:36:41Z  alert-nsg-rule-deleted disabled exit=1
+--- verification ---
+Name                     Enabled
+-----------------------  ---------
+alert-vm-spoke-cpu-high  True
+Name                    Enabled
+----------------------  ---------
+alert-vm-started        True
+alert-vm-deallocated    True
+alert-nsg-rule-deleted  True
+Re-enable: az monitor metrics alert update -g rg-monitoring-lab -n <name> --enabled true / az monitor activity-log alert update -g rg-monitoring-lab -n <name> --enabled true
