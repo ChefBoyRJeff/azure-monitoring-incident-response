@@ -13,3 +13,16 @@ alert-vm-started        True
 alert-vm-deallocated    True
 alert-nsg-rule-deleted  True
 Re-enable: az monitor metrics alert update -g rg-monitoring-lab -n <name> --enabled true / az monitor activity-log alert update -g rg-monitoring-lab -n <name> --enabled true
+
+=== CORRECTION: the disable attempt above FAILED for all 4 rules (exit=1; verification shows Enabled True). ===
+Cause: 'update' re-sends and re-validates the whole rule. Metric alert: ResourceGroupNotFound (target VM's RG deleted) - confirmed.
+Activity log alerts: ScopeIsInvalid ('can only be a subscription ID') - hypothesis: same revalidation against the deleted RG scope; message is misleading.
+Remediation (approved 2026-11-01): delete the 4 rules. Recreate by redeploying P2's Bicep once monitored VMs exist.
+2026-11-01T22:39:29Z  deleted alert-vm-spoke-cpu-high exit=0
+2026-11-01T22:39:31Z  deleted alert-vm-started exit=0
+2026-11-01T22:39:33Z  deleted alert-vm-deallocated exit=0
+2026-11-01T22:39:35Z  deleted alert-nsg-rule-deleted exit=0
+--- verification ---
+2026-11-01T22:39:36Z  metric alerts remaining: 0
+2026-11-01T22:39:37Z  activity log alerts remaining: 0
+2026-11-01T22:39:39Z  rg-monitoring-lab resources: law-monitoring-lab, ag-lab-ops, 0abd4092-de83-46c2-b27b-5fa7a18a6053
