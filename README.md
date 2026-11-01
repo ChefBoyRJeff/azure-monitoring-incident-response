@@ -4,6 +4,8 @@ Azure Monitor lab: Log Analytics, KQL, Activity log and metric alerts, action gr
 
 > **Status:** M1–M6 complete. Every result below comes from a live deployment, with sanitized evidence in [`docs/evidence/`](docs/evidence/). Root-cause reports: [RCA-001](docs/rca/rca-001-nsg-rule-deleted-ssh-outage.md) (NSG incident), [RCA-002](docs/rca/rca-002-cpu-metric-alert.md) (metric alert test). Interview notes: [`docs/interview-guide.md`](docs/interview-guide.md).
 
+> **Update (2026-11-01):** the monitored workload (hub-and-spoke Lab 2, `rg-hubspoke-vms`) was torn down. The four alert rules targeting it couldn't be disabled (an update re-validates the rule against its now-deleted scope) and were **deleted** instead ([evidence](docs/evidence/alerts-disabled-2026-11-01.txt)). The workspace, action group, workbook, and subscription diagnostic setting are still deployed, at $0. To run the lab again, rebuild Lab 2 from its Bicep, then redeploy `infra/main.bicep` to recreate the alerts.
+
 ## Problem It Solves
 
 Operations teams need to **detect** changes and failures automatically, **investigate** them with logs, and **prove** what happened. In this portfolio's [hub-and-spoke Lab 2](https://github.com/ChefBoyRJeff/azure-hub-spoke-network#lab-2-portal-built-connectivity-validation), an interrupted test script left a VM running, and nobody knew until someone checked by hand. This project builds the monitoring that would have caught it, then breaks the lab on purpose to test it.
@@ -63,10 +65,10 @@ flowchart LR
 | Log Analytics workspace | `law-monitoring-lab` | Pay-as-you-go (PerGB2018); 30-day retention; **daily cap 0.1 GB**; resource-context access mode |
 | Action group | `ag-lab-ops` | Short name `lab-ops`; one email receiver; region Global |
 | Subscription diagnostic setting | `diag-activitylog-to-law` | All 8 Activity log categories → `law-monitoring-lab` |
-| Activity log alert | `alert-vm-started` | Scope `rg-hubspoke-vms`; `Microsoft.Compute/virtualMachines/start/action`; Succeeded |
-| Activity log alert | `alert-vm-deallocated` | Scope `rg-hubspoke-vms`; `.../virtualMachines/deallocate/action`; Succeeded |
-| Activity log alert | `alert-nsg-rule-deleted` | Scope `rg-hubspoke-vms`; **any of** `.../securityRules/delete` or `.../networkSecurityGroups/write`; Succeeded. **Code-only** (the wizard can't build `anyOf`) |
-| Metric alert | `alert-vm-spoke-cpu-high` | `vm-spoke-lab2`; Percentage CPU, Average > 80; window 5 min, frequency 1 min; Sev 2; auto-resolve. **About USD 0.10/month** |
+| Activity log alert *(deleted 2026-11-01)* | `alert-vm-started` | Scope `rg-hubspoke-vms`; `Microsoft.Compute/virtualMachines/start/action`; Succeeded |
+| Activity log alert *(deleted 2026-11-01)* | `alert-vm-deallocated` | Scope `rg-hubspoke-vms`; `.../virtualMachines/deallocate/action`; Succeeded |
+| Activity log alert *(deleted 2026-11-01)* | `alert-nsg-rule-deleted` | Scope `rg-hubspoke-vms`; **any of** `.../securityRules/delete` or `.../networkSecurityGroups/write`; Succeeded. **Code-only** (the wizard can't build `anyOf`) |
+| Metric alert *(deleted 2026-11-01)* | `alert-vm-spoke-cpu-high` | `vm-spoke-lab2`; Percentage CPU, Average > 80; window 5 min, frequency 1 min; Sev 2; auto-resolve. **About USD 0.10/month** |
 | Workbook | Lab Operations - Incidents and Changes | Alert history (Resource Graph), VM power events (KQL), NSG changes manual vs. code (KQL), CPU (metrics) |
 
 All of it is declared in [`infra/main.bicep`](infra/main.bicep) and [`infra/modules/monitoring.bicep`](infra/modules/monitoring.bicep).
@@ -265,7 +267,7 @@ Gitignored: `infra/*.local.bicepparam`, `infra/export/`, `docs/screenshots/raw/`
 | Activity log collection and `AzureActivity` ingestion | $0 (free table, `_IsBillable = false`) |
 | Activity log alert rules (3) | $0 |
 | Platform metrics | $0 (no agent) |
-| **Metric alert rule** | **About USD 0.10/month** (portal estimate, one time series). **The only ongoing charge** |
+| **Metric alert rule** | **About USD 0.10/month** (portal estimate, one time series). Was the only ongoing charge; **deleted 2026-11-01**, so the lab now costs $0 |
 | Action group email | $0 (up to 1,000 per month) |
 | Workspace | $0 (no billable data; daily cap 0.1 GB as a guardrail) |
 | Workbook | $0 |
@@ -299,7 +301,9 @@ It's in the Bicep, so the next deployment recreates it.
    ```
 4. Optionally unregister `Microsoft.Insights` and `Microsoft.AlertsManagement` (only possible if no resources of those types remain).
 
-The monitored Lab 2 environment isn't affected; see its own cost and preservation policy.
+The monitored Lab 2 environment isn't affected by this teardown. (Lab 2 itself was torn down separately on 2026-11-01; see the update at the top.)
+
+**Lesson from 2026-11-01:** delete or retarget alert rules **before** deleting the resources they watch. Once the target is gone, `az monitor ... alert update --enabled false` fails (`ResourceGroupNotFound` for the metric alert, `ScopeIsInvalid` for the Activity log alerts), because an update sends the whole rule back for validation. Deleting still works.
 
 ## Known Limitations
 
