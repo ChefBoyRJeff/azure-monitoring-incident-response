@@ -1,0 +1,30 @@
+=== Lab 4 M1: workload for Network Watcher, 2026-11-05 15:31 ===
+--- 1. resource group ---
+  rg-netwatch-lab create exit=0
+--- 2. NICs on the Project 1 subnets (static IP, accelerated networking, no public IP, no NIC NSG) ---
+  nic-vm-nw-hub 10.0.1.20 create exit=0
+  nic-vm-nw-spoke1 10.1.1.20 create exit=0
+--- 3. VMs (D2als_v6, Ubuntu 24.04, random password never displayed; disk and NIC deleted with the VM) ---
+  vm-nw-hub create submitted exit=0
+  vm-nw-spoke1 create submitted exit=0
+  vm-nw-hub created (wait exit=0)
+  vm-nw-spoke1 created (wait exit=0)
+--- 4. Network Watcher Agent extension ---
+  vm-nw-hub: exit=0 state/version=Succeeded 1.4
+  vm-nw-spoke1: exit=0 state/version=Succeeded 1.4
+--- 5. web server on vm-nw-spoke1 (plain HTTP on 443, same as Lab 3) ---
+  service: active  listen: 0.0.0.0:443
+  local: hello from vm-nw-spoke1
+--- 6. baseline from vm-nw-hub: HTTP 443 and SSH port 22 on the spoke VM ---
+  http 10.1.1.20:443 -> hello from vm-nw-spoke1
+  tcp 10.1.1.20:22 -> open
+--- 7. state ---
+  vm-nw-hub	10.0.1.20	VM running
+  vm-nw-spoke1	10.1.1.20	VM running
+  leak check (should be 0): 0
+--- 8. storage account (created in the portal), checked 15:38 ---
+  name=stnwlab4k7q2x location=eastus kind=StorageV2 sku=Standard_LRS tier=Standard
+  httpsOnly=True minTls=TLS1_2 allowBlobPublicAccess=False publicNetworkAccess=Enabled defaultAction=Allow
+  tags: costCenter=CC-1001, environment=lab, lab=lab4, owner=jeff, project=azure-monitoring-incident-response
+  meets flow-log requirements (same region as VNet, Standard, StorageV2): True
+  leak check (should be 0): 0

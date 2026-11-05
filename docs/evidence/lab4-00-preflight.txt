@@ -1,0 +1,47 @@
+=== Lab 4 M0: Network Watcher preflight, 2026-11-05 15:27 ===
+--- 1. subscription and resource providers ---
+  subscription: AZ104_PracticeSubscription
+  Microsoft.Network              Registered
+  Microsoft.Insights             Registered
+  Microsoft.OperationalInsights  Registered
+  Microsoft.Storage              Registered
+  Microsoft.Compute              Registered
+--- 2. Network Watcher in eastus ---
+  name=NetworkWatcher_eastus rg=NetworkWatcherRG state=Succeeded
+  existing flow logs in eastus: 0
+  existing connection monitors in eastus: 0
+--- 3. Project 2 monitoring resources ---
+  workspace=law-monitoring-lab sku=PerGB2018 retention=30d dailyCapGb=0.1 capStatus=RespectQuota location=eastus
+  action group ag-lab-ops exists: True
+  alert rules now: metric=0 activity=0
+--- 4. Project 1 network the lab will use ---
+  vnet-hub/snet-shared prefix=10.0.1.0/26 defaultOutboundAccess=False nsg= routeTable= serviceEndpoints= ipConfigs=0
+  vnet-spoke1/snet-workload prefix=10.1.1.0/25 defaultOutboundAccess=False nsg=nsg-spoke1-workload routeTable=rt-spoke1-workload serviceEndpoints= ipConfigs=0
+  spoke1 NSG rules (priority order):
+    100   Allow-HTTPS-From-Hub       Allow  src=10.0.0.0/16 ports=443
+    110   Allow-Mgmt-From-Shared     Allow  src=10.0.1.0/26 ports=22,3389
+    115   Allow-SSH-From-Bastion     Allow  src=10.0.3.0/26 ports=22
+    120   Allow-Intra-Subnet         Allow  src=10.1.1.0/25 ports=*
+    3900  Allow-AzureLB-Probe-443    Allow  src=AzureLoadBalancer ports=443
+    4000  Deny-VNet-Inbound          Deny   src=VirtualNetwork ports=*
+  spoke1 routes: 0.0.0.0/0 -> VirtualAppliance 10.0.1.4
+  planned IP 10.0.1.20 (hub) available: true
+  planned IP 10.1.1.20 (spoke1) available: true
+--- 5. VM size: Standard_D2als_v6 in eastus (need 4 vCPUs for 2 VMs) ---
+  restrictions=''  standardDalv6Family used=0 limit=10 free=10
+  running VMs in subscription: 0
+--- 6. policy: are the resource types this lab needs blocked? ---
+  assignment 'Block costly lab resources' (scope subscriptions/<guid>): 9 blocked types
+    Microsoft.Compute/virtualMachines                        blocked=False
+    Microsoft.Storage/storageAccounts                        blocked=False
+    Microsoft.Network/networkWatchers/flowLogs               blocked=False
+    Microsoft.Network/networkWatchers/connectionMonitors     blocked=False
+    Microsoft.Network/networkWatchers/packetCaptures         blocked=False
+    Microsoft.Insights/metricAlerts                          blocked=False
+    Microsoft.Compute/virtualMachines/extensions             blocked=False
+--- 7. budgets ---
+  budget-az104-lab: spent 0.760696230434493 of 10.0
+  budget-backup-dr-lab: spent 0.1573434 of 5.0
+  budget-compute-hosting-lab: spent 0.3440676718550209 of 5.0
+  budget-storage-pe-lab: spent 0.0623624513794723 of 5.0
+  leak check (should be 0): 0

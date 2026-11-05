@@ -1,0 +1,67 @@
+=== Lab 4 M2: VNet flow log on vnet-spoke1 (built in the portal), 2026-11-05 15:44 ===
+--- 1. flow log configuration ---
+  enabled=True target=vnet-spoke1 storage=stnwlab4k7q2x retentionDays=1 (enabled=True) format=JSON v2
+  traffic analytics enabled=True intervalMin=10 workspace=law-monitoring-lab
+--- 2. traffic from vm-nw-hub (10.0.1.20) to vm-nw-spoke1 (10.1.1.20), 15:44:49 ---
+  HTTP 443 (expect allowed, rule 100): 20/20 succeeded
+  TCP 22  (expect allowed, rule 110): 10/10 succeeded
+  TCP 8080 (expect DENIED, rule 4000): 0/10 succeeded
+--- 3. wait for the flow log blob (container insights-logs-flowlogflowevent; max 15 min) ---
+  blobs: 1; first appeared within 2 min of starting to wait
+  note: read with --auth-mode key (control-plane listKeys as Owner). Owner has no blob data role - same split as P4 Scenario 5.
+--- 4. flow tuples between the two VMs (time,src,dst,sport,dport,proto,dir,state,enc,pktsS2D,bytesS2D,pktsD2S,bytesD2S) ---
+  tuples hub -> spoke VM: 89
+    dport/state/rule = 22, B, UserRule_Allow-Mgmt-From-Shared             count=10
+    dport/state/rule = 22, E, UserRule_Allow-Mgmt-From-Shared             count=10
+    dport/state/rule = 443, B, UserRule_Allow-HTTPS-From-Hub              count=19
+    dport/state/rule = 443, E, UserRule_Allow-HTTPS-From-Hub              count=20
+    dport/state/rule = 8080, D, UserRule_Deny-VNet-Inbound                count=30
+  example of each state:
+    B: 1793911497061,10.0.1.20,10.1.1.20,45086,443,6,I,B,NX,0,0,0,0  rule=UserRule_Allow-HTTPS-From-Hub
+    D: 1793911497078,10.0.1.20,10.1.1.20,50966,8080,6,I,D,NX,0,0,0,0  rule=UserRule_Deny-VNet-Inbound
+    E: 1793911503087,10.0.1.20,10.1.1.20,45104,443,6,I,E,NX,5,464,5,597  rule=UserRule_Allow-HTTPS-From-Hub
+  RESULT: denied (D) tuples to 8080 = 30; allowed tuples to 443 = 39; to 22 = 20
+  leak check (should be 0): 0
+--- TRAFFIC ANALYTICS DIAGNOSIS (16:43): no NTANetAnalytics rows ~1 h after the 15:44 traffic ---
+  H1 still first-run lag  H2 TA processing/ingestion failing  H3 workspace refusing data (cap/operation errors)  H4 data landing in other tables
+  flow log: state=Succeeded enabled=True; TA enabled=True interval=10 workspace=law-monitoring-lab workspaceRegion=eastus
+  raw flow log blobs: 2; newest written 16:43
+  data collection rules / endpoints in the subscription (TA uses a DCR for ingestion):
+    dataCollectionRules                  NWTA-<guid>WXX5UA rg=rg-monitoring-lab loc=eastus
+    dataCollectionEndpoints              <id> rg=rg-monitoring-lab loc=eastus
+  KQL: H4: which tables received data in the last 3 h
+    query failed (see error above)
+  KQL: H3: workspace operation messages (cap, ingestion errors)
+    TimeGenerated | Category | Operation | Level | Detail
+    rows: 0
+  KQL: H2: any NTA tables at all (NTANetAnalytics / NTAIpDetails / NTATopologyDetails)
+    Type | rows
+    NTANetAnalytics | 10
+    NTATopologyDetails | 92
+    rows: 2
+  leak check (should be 0): f4=0 f2=0
+--- TRAFFIC ANALYTICS (continued, 16:45): H2 ruled out - NTANetAnalytics has rows, so the filter didn't match. Look at them unfiltered. ---
+  KQL: H4 redo: tables with data in the last 3 h (renamed reserved word last)
+    query failed (see error above)
+  KQL: all NTANetAnalytics rows (key columns)
+    TimeGenerated | SubType | FlowType | FlowDirection | SrcIp | DestIp | DestPort | L4Protocol | FlowStatus | AclRule | AllowedInFlows | DeniedInFlows | FlowStartTime | FlowIntervalStartTime | FlowIntervalEndTime
+    11/5/2026 9:25:06 PM | StatusMessage |  |  |  |  |  |  |  |  |  |  |  | 11/5/2026 9:00:00 PM | 11/5/2026 9:21:00 PM
+    11/5/2026 9:35:23 PM | StatusMessage |  |  |  |  |  |  |  |  |  |  |  | 11/5/2026 9:21:00 PM | 11/5/2026 9:30:00 PM
+    11/5/2026 9:25:06 PM | FlowLog | InterVNet | Inbound | 10.0.1.20 | 10.1.1.20 | 443 | TCP | Allowed | allow-https-from-hub | 89 | 0 | 11/5/2026 8:44:57 PM | 11/5/2026 9:00:00 PM | 11/5/2026 9:21:00 PM
+    11/5/2026 9:25:06 PM | FlowLog | InterVNet | Inbound | 10.0.1.20 | 10.1.1.20 | 9 | TCP | Denied | deny-vnet-inbound | 0 | 3 | 11/5/2026 9:07:20 PM | 11/5/2026 9:00:00 PM | 11/5/2026 9:21:00 PM
+    11/5/2026 9:25:06 PM | FlowLog | InterVNet | Inbound | 10.0.1.20 | 10.1.1.20 | 22 | TCP | Allowed | allow-mgmt-from-shared | 88 | 0 | 11/5/2026 9:07:20 PM | 11/5/2026 9:00:00 PM | 11/5/2026 9:21:00 PM
+    11/5/2026 9:35:23 PM | FlowLog | InterVNet | Inbound | 10.0.1.20 | 10.1.1.20 | 443 | TCP | Denied | deny-vnet-inbound | 0 | 637 | 11/5/2026 9:20:40 PM | 11/5/2026 9:21:00 PM | 11/5/2026 9:30:00 PM
+    11/5/2026 9:35:23 PM | FlowLog | InterVNet | Inbound | 10.0.1.20 | 10.1.1.20 | 22 | TCP | Allowed | allow-mgmt-from-shared | 128 | 0 | 11/5/2026 9:20:40 PM | 11/5/2026 9:21:00 PM | 11/5/2026 9:30:00 PM
+    11/5/2026 9:35:23 PM | FlowLog | InterVNet | Inbound | 10.0.1.20 | 10.1.1.20 | 443 | TCP | Allowed | platformrule | 3 | 0 | 11/5/2026 9:20:42 PM | 11/5/2026 9:21:00 PM | 11/5/2026 9:30:00 PM
+    11/5/2026 9:35:23 PM | FlowLog | InterVNet | Inbound | 10.0.1.20 | 10.1.1.20 | 9 | TCP | Denied | deny-vnet-inbound | 0 | 6 | 11/5/2026 9:20:50 PM | 11/5/2026 9:21:00 PM | 11/5/2026 9:30:00 PM
+    11/5/2026 9:35:23 PM | FlowLog | InterVNet | Inbound | 10.0.1.20 | 10.1.1.20 | 443 | TCP | Allowed | allow-https-from-hub | 93 | 0 | 11/5/2026 9:27:50 PM | 11/5/2026 9:21:00 PM | 11/5/2026 9:30:00 PM
+    rows: 10
+  KQL: denied flows to the spoke VM, any source (should include 8080 at 15:44 and 443 at 16:20-16:28 if processed)
+    SrcIp | DestIp | DestPort | AclRule | records | deniedIn | firstFlow | lastFlow
+    10.0.1.20 | 10.1.1.20 | 9 | deny-vnet-inbound | 2 | 9 | 11/5/2026 9:07:20 PM | 11/5/2026 9:28:51 PM
+    10.0.1.20 | 10.1.1.20 | 443 | deny-vnet-inbound | 1 | 637 | 11/5/2026 9:20:40 PM | 11/5/2026 9:27:44 PM
+    rows: 2
+  partial-GUID leak check (should be 0): f2=0 f4=0
+  RESULT (TA): H1 confirmed - first-run latency. First TA data landed 16:25:06 (interval 16:00-16:21), next 16:35:23 (16:21-16:30); TA enabled ~15:42, so first data ~43 min later (first interval aligned to the hour), then ~5 min after each 10-min interval. The M3 (16:11) and M4 (~16:24) queries ran just before data existed.
+  TA independently shows the M4 outage: 443 Denied 637 flows 16:20:40-16:27:44 (deny-vnet-inbound), matching break 16:20:36 / fix 16:27:49.
+  Open (not explained): M2 8080 denials (15:44) absent from TA; port 9 denials (hypothesis: connection monitor path-discovery probes); 3 allowed 443 flows labelled platformrule at 16:20:42. Mistake: concluded too early that TA was broken; also 'union withsource=TableName' fails here because a table already has a TableName column.

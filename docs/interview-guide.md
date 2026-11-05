@@ -98,3 +98,63 @@ Answer these out loud without notes:
 - Detection times come from 10 data points. The 5-minute grid is an observation.
 - The stranded alert and the third NSG alert are unexplained, with hypotheses stated.
 - The NSG alert detects but doesn't prevent.
+
+## 7. Lab 4: Network Watcher
+
+### Two-minute walkthrough
+
+"The first part of this project watches the control plane: who changed what. Lab 4 adds the data plane: did the packets get through? I put two VMs on my hub-and-spoke network and set up three things:
+- a **connection monitor** testing TCP 443 and 22 every 30 seconds, with an alert
+- a **VNet flow log** with Traffic Analytics
+- **packet capture**
+
+Then I broke it. I changed an allow rule's port from 443 to 8443, the kind of typo someone makes during a change. The alert fired in **2.9 minutes**. The connection monitor showed only 443 failing while 22 kept passing, which narrowed it to one port straight away. Every Network Watcher tool named the rule doing the blocking, the VNet deny rule, but that rule was working as designed. **What actually changed** came from the activity log and a what-if against my Bicep, which showed the port drift exactly. I fixed it; the outage was 7.2 minutes.
+
+Packet capture then failed with an internal server error on the spoke VM only. A control test on the hub VM worked. The difference was a route: the spoke sends 0.0.0.0/0 to an appliance that doesn't exist, which blackholes traffic to storage too. I fixed it with a storage service endpoint, through code."
+
+### Likely questions
+
+**Q: Flow logs vs. connection monitor: when do you use which?**
+A connection monitor is **active**: it sends test traffic on a schedule and alerts when a path breaks, even with no real users. A flow log is **passive**: it records every flow that actually happened, allowed or denied, with the rule that decided it. You alert on the first and investigate with the second. In my incident the alert came from the connection monitor, and the flow log and Traffic Analytics showed 637 denied flows in exactly the outage window.
+
+**Q: Your tools all said `Deny-VNet-Inbound` blocked the traffic. Why wasn't that the root cause?**
+Because that rule did exactly what it was built to do. The deny at 4000 catches everything not allowed above it. The real change was an edit to the allow rule at 100. Network Watcher answers "what is blocking this now?". The activity log answers "what changed?". And a what-if against the code answers "how does live differ from what we intended?".
+
+**Q: Why did the alert take 10 minutes to resolve but under 3 to fire?**
+Metric alerts are stateful. They resolve only after the condition is false for three consecutive evaluations. With a 5-minute window on the *maximum* test result, the last failure has to age out of the window first, and then three clean checks run, one a minute.
+
+**Q: Why couldn't the packet capture on the spoke see the blocked SYNs?**
+The NSG drops them at the host, before they reach the guest OS, and that's where the capture runs. The capture file was empty while three connection attempts timed out. To see dropped traffic, capture on the sender or use the flow log.
+
+**Q: Walk me through the packet capture failure.**
+The portal gave a generic error, so I went to the activity log for the real error codes. There were two separate problems.
+- **Local file path rejected:** it turned out to be the hyphens in the file name. I proved it on a second VM where everything else worked.
+- **Storage-only capture failing with an internal error:** I suspected the storage path, so I ran the identical capture on the hub VM, which has no route table. It worked. Next hop from the spoke to storage said `None` through my route table.
+- **The fix:** a storage service endpoint. Its routes are more specific than 0.0.0.0/0, so they win. After it, the spoke capture worked.
+
+**Q: Service endpoint or private endpoint?**
+A service endpoint is free and needs no DNS change, but the storage account is still reached on its public IP, and traffic bypasses a hub firewall. A private endpoint gives storage a private IP in the VNet and lets you turn off public access, at a small hourly cost and with private DNS to manage. For a lab with no firewall, the service endpoint was the cheapest correct fix. With a real firewall, I'd use a private endpoint or route storage through the firewall deliberately.
+
+**Q: What surprised you?**
+- Traffic Analytics took about 43 minutes to show its first data. I wrongly assumed it was broken.
+- Linux retried SYNs at 1-second intervals rather than doubling, because of a newer kernel setting.
+- Teardown left two resources behind that the platform had created: the Traffic Analytics data collection rule and endpoint.
+
+### Practice challenges (Lab 4)
+
+1. A connection monitor test fails, but IP flow verify says Allow. What else could block the traffic?
+2. How would you prove that a flow log is recording denials, and not just allowed traffic?
+3. Your VMs are in a subnet whose route table sends 0.0.0.0/0 to a firewall. Which Azure features stop working if the firewall is down?
+4. How would you alert on a manual NSG change, not just on its effect?
+
+**Model answers.**
+1. A guest firewall on the VM, the service not listening (that gives "refused", not a timeout), a route table sending the traffic somewhere else, an AVNM security admin rule, or an NSG on the source NIC or subnet in the outbound direction.
+2. Generate traffic to a port you know is denied, then find `D` records with that rule in the raw JSON, or `FlowStatus = Denied` in `NTANetAnalytics`, keeping Traffic Analytics' delay in mind.
+3. Anything that leaves the VNet: internet access, and Azure PaaS services on public endpoints (storage, Key Vault) unless you have service or private endpoints. In this lab that included packet capture uploads. Platform services on 168.63.129.16, such as Run Command, DNS and the VM agent, keep working.
+4. An activity log alert on `Microsoft.Network/networkSecurityGroups/securityRules/write` (and `networkSecurityGroups/write`, per RCA-001), plus a scheduled what-if against the code to report drift.
+
+### Honest limits (Lab 4)
+
+- Two VMs, about 2 hours, one test path. TCP checks only.
+- Timings come from one incident. Detection and resolution depend on the alert's window and evaluation settings.
+- The connection monitor resources were built in the portal and only checked with what-if, not redeployed from code.

@@ -1,0 +1,29 @@
+=== Lab 4 teardown, 2026-11-05 17:27 ===
+--- 0. what exists before teardown ---
+  NetworkWatcherRG: NetworkWatcher_eastus, NetworkWatcher_eastus/fl-vnet-spoke1, NetworkWatcher_eastus/cm-hub-to-spoke1, cm-hub-to-spoke1
+  flow logs: fl-vnet-spoke1  connection monitors: cm-hub-to-spoke1  packet captures: 0
+  rg-netwatch-lab: nic-vm-nw-hub, nic-vm-nw-spoke1, vm-nw-hub, vm-nw-spoke1, vm-nw-hub_OsDisk_1_bbc3c7dd1988490eb9d6005afdf93b8e, vm-nw-spoke1_OsDisk_1_450c3173805e4a078eeea4385c49c582, vm-nw-hub/NetworkWatcherAgentLinux, vm-nw-spoke1/NetworkWatcherAgentLinux, stnwlab4k7q2x
+  NWTA data collection resources: Microsoft.Insights/dataCollectionEndpoints, Microsoft.Insights/dataCollectionRules
+--- 1. connection monitor and its alert ---
+  connection monitor delete exit=0
+  alert delete exit=0
+--- 2. flow log (stops flow logging and Traffic Analytics) ---
+  flow log delete exit=0
+--- 3. Traffic Analytics data collection rule/endpoint (platform-created in rg-monitoring-lab) ---
+  dataCollectionRules delete exit=0 (still present after the flow log was deleted, so removed by hand)
+  dataCollectionEndpoints delete exit=0 (still present after the flow log was deleted, so removed by hand)
+--- 4. resource group rg-netwatch-lab (VMs, disks, NICs, storage account) ---
+  rg-netwatch-lab delete exit=0
+--- 5. VERIFY ---
+  rg-netwatch-lab exists: false
+  NetworkWatcherRG now: NetworkWatcher_eastus
+  flow logs: 0  connection monitors: 0  packet captures: 0
+  metric alerts in the subscription: 0
+  rg-monitoring-lab now: law-monitoring-lab, ag-lab-ops, <id>
+  rg-hubspoke-lab resources: 7 (expect 7)  spoke1 IPs in use: 0  hub snet-shared IPs in use: 0
+  running VMs in the subscription: 0   all VMs: 0
+  budget budget-az104-lab: spent 0.760696230434493 of 10.0
+  budget budget-backup-dr-lab: spent 0.1573434 of 5.0
+  budget budget-compute-hosting-lab: spent 0.3440676718550209 of 5.0
+  budget budget-storage-pe-lab: spent 0.0623624513794723 of 5.0
+  partial-GUID leak check (should be 0): 0

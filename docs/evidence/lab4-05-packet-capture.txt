@@ -1,0 +1,147 @@
+=== Lab 4 M5: packet capture + storage path, 2026-11-05 16:48 ===
+  PREDICTION 1: each 'nc -w 3' attempt to a dropped port sends 3 SYNs (initial + retransmits ~1 s and ~3 s later), explaining 30 D tuples from 10 attempts in M2.
+  PREDICTION 2: the capture's upload to storage FAILS from vm-nw-spoke1 - rt-spoke1-workload sends 0.0.0.0/0 (which includes storage public IPs) to 10.0.1.4, where no appliance exists. Control: vm-nw-hub (private subnet, no UDR) CAN reach same-region storage.
+--- 1. storage endpoint reachability from both VMs (any HTTP code = reached; 000 = no path) ---
+  vm-nw-hub     dns: 20.209.75.225
+  vm-nw-hub     https stnwlab4k7q2x.blob.core.windows.net -> http=400 curl_exit=0
+  vm-nw-spoke1  dns: 20.209.75.225
+  vm-nw-spoke1  https stnwlab4k7q2x.blob.core.windows.net -> http=000 curl_exit=28
+--- 2. next hop to the storage IP from each VM ---
+  vm-nw-hub     -> 20.209.75.225: nextHopType=Internet nextHopIp= route=System Route
+  vm-nw-spoke1  -> 20.209.75.225: nextHopType=None nextHopIp=10.0.1.4 route=rt-spoke1-workload
+  partial-GUID leak check (should be 0): f2=0 f5=0
+--- packet capture create FAILED in the portal (16:55): 'Specified path /var/captures/pc-spoke1-8080.cap is invalid.' Path matches the documented rule (Linux: starts with /var/captures, includes *.cap). Hypothesis: folder doesn't exist on the VM. ---
+  before: ls: cannot access '/var/captures': No such file or directory
+  after:  drwxr-xr-x 2 root root 4096 Nov  5 21:55 /var/captures
+  RESULT: folder hypothesis DISPROVEN - retry at 16:59 after creating /var/captures failed with the same 'path is invalid'. Local-file capture left unexplained; switching to Capture location = Storage account only. Prediction 1 (SYN count) moved to a tcpdump on the SENDER (vm-nw-hub).
+  no leftover pc-spoke1-8080 object
+  CORRECTION: 'no leftover' above was wrong - the portal says 'Existing Packet capture can not be updated'. My check hid errors with 2>$null. Listing with errors visible:
+  list exit=0  captures in eastus: 1
+    pc-spoke1-8080  state=Failed target=VM-NW-SPOKE1 filePath=
+  deleted pc-spoke1-8080 exit=0
+  captures remaining in eastus: 0 
+--- PACKET CAPTURE DIAGNOSIS (17:06): portal attempts failed with 'path is invalid' (x2), 'Existing Packet capture can not be updated', then 'An error occurred.' ---
+--- a. captures that exist now (errors visible) ---
+  list exit=0  count=1
+    pc-spoke1-8080 state=Failed target=VM-NW-SPOKE1 filePath= storage=stnwlab4k7q2x
+    deleted pc-spoke1-8080 exit=0
+--- b. why the attempts failed: activity log, packetCaptures/write in NetworkWatcherRG, last 2 h ---
+  16:52:40 Failed    Microsoft.Network/networkWatchers/packetCaptures/write  {"error":{"code":"PacketCaptureLocalFilePathInvalidFormat","message":"Specified path /var/captures/pc-spoke1-8080.cap is invalid.","details":[]}}
+  16:53:38 Failed    Microsoft.Network/networkWatchers/packetCaptures/write  {"error":{"code":"PacketCaptureLocalFilePathInvalidFormat","message":"Specified path /var/captures/pc-spoke1-8080.cap is invalid.","details":[]}}
+  16:54:21 Failed    Microsoft.Network/networkWatchers/packetCaptures/write  {"error":{"code":"PacketCaptureLocalFilePathInvalidFormat","message":"Specified path /var/captures/pc-spoke1-8080.cap is invalid.","details":[]}}
+  16:56:56 Failed    Microsoft.Network/networkWatchers/packetCaptures/write  {"error":{"code":"PacketCaptureLocalFilePathInvalidFormat","message":"Specified path /var/captures/pc-spoke1-8080.cap is invalid.","details":[]}}
+  16:58:29 Failed    Microsoft.Network/networkWatchers/packetCaptures/write  {"error":{"code":"PacketCaptureLocalFilePathInvalidFormat","message":"Specified path /var/captures/pc-spoke1-8080.cap is invalid.","details":[]}}
+  17:01:07 Failed    Microsoft.Network/networkWatchers/packetCaptures/write  {"error":{"code":"PacketCaptureLocalFilePathInvalidFormat","message":"Specified path /var/captures/pc-spoke1-8080.cap is invalid.","details":[]}}
+  17:03:05 Failed    Microsoft.Network/networkWatchers/packetCaptures/write  {"status":"Failed","error":{"code":"ResourceOperationFailure","message":"The resource operation completed with terminal provisioning state 'Failed'.","details":[{"code":"InternalServerError","message":"An error occurred.","details":[]}]}}
+  17:03:34 Failed    Microsoft.Network/networkWatchers/packetCaptures/write  {"error":{"code":"PacketCaptureExistingAlready","message":"Existing Packet capture can not be updated. /subscriptions/<id>/resourceGroups/NetworkWatcherRG/providers/Microsoft.Network/networkWatchers/NetworkWatcher_eastus/packetCaptures/pc-spoke1-8080","details":[]}}
+  17:04:22 Succeeded Microsoft.Network/networkWatchers/packetCaptures/delete  
+--- c. Network Watcher agent on vm-nw-spoke1 ---
+  provisioningState=Succeeded version=1.4
+  instance view: ProvisioningState/succeeded Plugin enabled
+--- d. one create attempt from the CLI (storage only, same filter), errors visible ---
+  CLI create FAILED exit=1
+    ERROR: (InternalServerError) An error occurred.
+    Code: InternalServerError
+    Message: An error occurred.
+  partial-GUID leak check (should be 0): 0
+--- RESULT so far: Prediction 2 network part CONFIRMED - hub -> storage HTTP 400 (reached), next hop Internet; spoke -> storage timeout, next hop None (10.0.1.4 via rt-spoke1-workload). ---
+  Activity log error codes: local file path attempts = PacketCaptureLocalFilePathInvalidFormat (6x, folder creation made no difference); storage-only attempts (portal 17:03, CLI 17:06) = InternalServerError, leaving a Failed capture object (hence 'can not be updated').
+  HYPOTHESIS: storage-only capture fails on vm-nw-spoke1 because its agent cannot reach the storage account (same blackhole). CONTROL: identical capture on vm-nw-hub, which can reach storage.
+--- A. CONTROL: storage-only capture on vm-nw-hub + Prediction 1 (sender tcpdump), 17:08:33 ---
+  pc-hub-8080 create exit=0 status=Running errors=
+    attempt 1: no answer
+    attempt 2: no answer
+    attempt 3: no answer
+    PREDICTION 1 - SYNs sent per source port (one source port = one nc attempt):
+          3 53462
+          3 57300
+          3 57310
+    SYN timestamps (UTC, src > dst):
+    22:09:22.295659 10.0.1.20.53462
+    22:09:23.346062 10.0.1.20.53462
+    22:09:24.370071 10.0.1.20.53462
+    22:09:27.301234 10.0.1.20.57300
+    22:09:28.338069 10.0.1.20.57300
+    22:09:29.362064 10.0.1.20.57300
+    22:09:32.306814 10.0.1.20.57310
+    22:09:33.330081 10.0.1.20.57310
+    22:09:34.354068 10.0.1.20.57310
+  stop exit=0
+  final status=Stopped stopReason=Manual errors=
+  .cap blobs in storage: 1  sizes: 834 bytes
+  pc-hub-8080 deleted
+--- B. FORMAT TEST: local-file-only capture on vm-nw-hub, simple name /var/captures/pchub.cap ---
+    drwxr-xr-x 2 root root 4096 Nov  5 22:10 /var/captures
+  pc-hub-local create exit=0 status=Running errors=
+    total 4
+    -rw-r--r-- 1 root root 24 Nov  5 22:11 pchub.cap
+  pc-hub-local deleted
+  captures remaining in eastus: 1
+  partial-GUID leak check (should be 0): 0
+--- RESULTS A/B and Prediction 1 (17:16) ---
+  A: storage-only capture on vm-nw-hub WORKED (Running -> Stopped Manual, 1 .cap blob 834 bytes) - supports the hypothesis that the spoke's InternalServerError is its blocked path to storage (proof pending the fix).
+  B: local-file capture on vm-nw-hub with /var/captures/pchub.cap WORKED (24-byte file = header only). New hypothesis: the hyphens in pc-spoke1-8080.cap caused PacketCaptureLocalFilePathInvalidFormat.
+  PREDICTION 1 count CONFIRMED: 3 SYNs per nc attempt (3 source ports x 3). Timing prediction WRONG: retries ~1.05 s and ~1.02 s apart, not 1 s and 3 s. Hypothesis: kernel tcp_syn_linear_timeouts (linear, not exponential, early SYN retries). Checking:
+    kernel: 7.0.0-1017-azure
+    net.ipv4.tcp_syn_retries = 6
+    net.ipv4.tcp_syn_linear_timeouts = 4
+--- leftover captures (errors visible) ---
+  deleted leftover pc-spoke1-8080 exit=0
+  captures now: 0
+--- FIX through code: Microsoft.Storage service endpoint on spoke snet-workload (modules/spoke.bicep) ---
+  spoke.bicep size 6608                        True
+  spoke.bicep has Microsoft.Storage endpoint   True
+  no side file left                            True
+  bicep build main.bicep                       True
+  what-if: Resource changes: 7 to modify, 4 no change.  resource deletions=0  serviceEndpoint lines=6
+            + properties.serviceEndpoints: [
+                  service: "Microsoft.Storage"
+        x properties.subnets[0].properties.serviceEndpoints[0].locations: [
+            + properties.serviceEndpoints: [
+                  service: "Microsoft.Storage"
+        x properties.subnets[0].properties.serviceEndpoints[0].locations: [
+  deploy exit=0
+  vnet-spoke1/snet-workload service endpoints: Microsoft.Storage	Succeeded	eastus,westus,westus3
+  vnet-spoke2/snet-workload service endpoints: Microsoft.Storage	Succeeded	eastus,westus,westus3
+--- VERIFY the path: next hop + reachability from vm-nw-spoke1 to storage ---
+  next hop vm-nw-spoke1 -> 20.209.75.225: type=VirtualNetworkServiceEndpoint ip= route=System Route
+  effective routes with next hop VirtualNetworkServiceEndpoint: 3
+    https stnwlab4k7q2x.blob.core.windows.net -> http=400 curl_exit=0
+--- RE-TEST: packet capture on vm-nw-spoke1, Both (storage + local, NO hyphens: /var/captures/pcspoke.cap) ---
+  PREDICTION 3: the capture on the RECEIVER sees 0 SYNs to 8080 - the NSG drops them at the host before the guest OS.
+  spoke capture create exit=0 status=Running
+    attempt 1: no answer
+    attempt 2: no answer
+    attempt 3: no answer
+    control HTTP 443 (allowed, not in the 8080 filter): 5/5
+  stop exit=0
+  final status=Stopped stopReason=Manual errors=
+  .cap blobs from vm-nw-spoke1: 1  (all .cap blobs: 2)
+    total 4
+    -rw-r--r-- 1 root root 24 Nov  5 22:20 pcspoke.cap
+    SYNs to 8080 seen by the receiver: 0  total packets in file: 0
+  pcspoke8080 deleted; captures remaining: 0
+  partial-GUID leak check (should be 0): 0
+--- RESULTS after the fix (17:23) ---
+  Kernel 7.0.0-1017-azure, tcp_syn_linear_timeouts=4, tcp_syn_retries=6: CONFIRMS the linear (1 s) early SYN retries. Prediction 1 count right, timing wrong.
+  Service endpoint deployed through code (what-if 0 deletions; deploy exit=0). Next hop spoke -> storage now VirtualNetworkServiceEndpoint; storage from the spoke 000 -> HTTP 400.
+  Live endpoint locations eastus,westus,westus3 vs code [eastus]: Azure added regions itself (hypothesis: storage service endpoint region-pair behaviour); what-if marks it x (no effect).
+  CONFIRMED by experiment: spoke storage-only capture InternalServerError was the blocked storage path - after the fix the spoke capture ran (Stopped Manual, 1 .cap blob).
+  PREDICTION 3 CONFIRMED: receiver-side capture held 0 packets while 3 nc attempts timed out (443 control 5/5) - the NSG drops at the host before the guest. Capture on the sender, or use flow logs, for NSG drops.
+--- ISOLATION TEST: hyphenated local file name on vm-nw-hub (storage path works there) ---
+  hyphenated name REJECTED on the hub (exit=1):
+    Code: PacketCaptureLocalFilePathInvalidFormat
+    Message: Specified path /var/captures/pc-hub-8080.cap is invalid.
+--- EXPORT live config for the Bicep (infra\export\lab4, gitignored) ---
+  exported alert.json                   2159 bytes
+  exported connection-monitor.json      2333 bytes
+  exported dce-list.json                1070 bytes
+  exported dcr-list.json                1074 bytes
+  exported flowlog.json                 1648 bytes
+  git ignores infra/export: True
+--- COST: deallocate both lab VMs while the Bicep is written ---
+  vm-nw-hub	VM deallocated
+  vm-nw-spoke1	VM deallocated
+  running VMs in subscription: 0
+  partial-GUID leak check (should be 0): 0
+  HYPHEN TEST: hyphenated local file name REJECTED on vm-nw-hub too (PacketCaptureLocalFilePathInvalidFormat), where storage works and a hyphen-free name worked. CONFIRMED: '-' in the local file path causes the rejection (not documented). Capture NAMES may contain hyphens.

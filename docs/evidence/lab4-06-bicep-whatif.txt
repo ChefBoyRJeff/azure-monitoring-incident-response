@@ -1,0 +1,17 @@
+=== Lab 4 M6: Bicep for the portal-built Network Watcher resources (what-if only), 2026-11-05 17:26 ===
+  file: infra\lab4\netwatch.bicep  size=7445 bytes (expected 7445)
+  bicep build exit=0
+  PREDICTION pass 1: 0 create, 0 delete; noise from read-only fields, ID case, empty strings.
+  what-if exit=0
+    The deployment will update the following scope:
+    Scope: /subscriptions/<id>/resourceGroups/NetworkWatcherRG
+      ~ Microsoft.Network/networkWatchers/NetworkWatcher_eastus/flowLogs/fl-vnet-spoke1 [2024-05-01]
+        ~ properties.flowAnalyticsConfiguration.networkWatcherFlowAnalyticsConfiguration.workspaceId:     "<id>" => "[reference('/subscriptions/<id>/resourceGroups/rg-monitoring-lab/providers/Microsoft.OperationalInsights/workspaces/law-monitoring-lab', '2025-07-01').customerId]"
+        ~ properties.flowAnalyticsConfiguration.networkWatcherFlowAnalyticsConfiguration.workspaceRegion: "eastus" => "[reference('/subscriptions/<id>/resourceGroups/rg-monitoring-lab/providers/Microsoft.OperationalInsights/workspaces/law-monitoring-lab', '2025-07-01', 'full').location]"
+      = Microsoft.Insights/metricAlerts/cm-hub-to-spoke1 [2018-03-01]
+      = Microsoft.Network/networkWatchers/NetworkWatcher_eastus/connectionMonitors/cm-hub-to-spoke1 [2024-05-01]
+      * Microsoft.Network/networkWatchers/NetworkWatcher_eastus
+    Resource changes: 1 to modify, 2 no change, 1 to ignore.
+  creates=0 deletes=0
+  partial-GUID leak check (should be 0): 0
+  RESULT pass 1: connection monitor = NoChange, alert = NoChange, flow log ~ only workspaceId/workspaceRegion shown as [reference(...)] (runtime values what-if can't resolve - same noise as P4 Scenario 9). 0 creates, 0 deletes. Accepted as known noise; code matches live.

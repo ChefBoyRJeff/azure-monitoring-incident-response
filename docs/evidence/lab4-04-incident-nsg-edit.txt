@@ -1,0 +1,132 @@
+=== Lab 4 M4: controlled failure - 'web app in spoke1 is down', 2026-11-05 16:20 ===
+  design note: first attempt (a new Deny rule at priority 90) was rejected by the portal - NSG priorities are 100-4096 and 100 is taken, so the failure is an edit to an existing rule instead.
+--- SYMPTOM: hub users report the spoke1 web app is down. No changes made during diagnosis. ---
+--- 1. what changed? (activity log, caller omitted) ---
+  last NSG rule write: not found yet (activity log can lag a few minutes)
+    100   Allow-HTTPS-From-Hub       Allow  src=10.0.0.0/16 ports=8443
+    110   Allow-Mgmt-From-Shared     Allow  src=10.0.1.0/26 ports=22,3389
+    115   Allow-SSH-From-Bastion     Allow  src=10.0.3.0/26 ports=22
+    120   Allow-Intra-Subnet         Allow  src=10.1.1.0/25 ports=*
+    3900  Allow-AzureLB-Probe-443    Allow  src=AzureLoadBalancer ports=443
+    4000  Deny-VNet-Inbound          Deny   src=VirtualNetwork ports=*
+--- 2. DETECT: wait for alert cm-hub-to-spoke1 to fire (max 20 min) ---
+  FIRED: rule=cm-hub-to-spoke1 sev=Sev3 condition=Fired state=New at 16:23:29
+--- 3. INVESTIGATE: connection monitor - which test is failing? ---
+  KQL: test results per 2 min, last 20 min
+    TimeGenerated | TestConfigurationName | passed | failed | checksFailed | checksTotal
+    11/5/2026 9:06:00 PM | tc-tcp-22 | 1 | 0 | 0 | 3
+    11/5/2026 9:06:00 PM | tc-tcp-443 | 1 | 0 | 0 | 3
+    11/5/2026 9:08:00 PM | tc-tcp-22 | 4 | 0 | 0 | 12
+    11/5/2026 9:08:00 PM | tc-tcp-443 | 4 | 0 | 0 | 12
+    11/5/2026 9:10:00 PM | tc-tcp-22 | 4 | 0 | 0 | 12
+    11/5/2026 9:10:00 PM | tc-tcp-443 | 4 | 0 | 0 | 12
+    11/5/2026 9:12:00 PM | tc-tcp-22 | 4 | 0 | 0 | 12
+    11/5/2026 9:12:00 PM | tc-tcp-443 | 4 | 0 | 0 | 12
+    11/5/2026 9:14:00 PM | tc-tcp-22 | 4 | 0 | 0 | 12
+    11/5/2026 9:14:00 PM | tc-tcp-443 | 4 | 0 | 0 | 12
+    11/5/2026 9:16:00 PM | tc-tcp-22 | 4 | 0 | 0 | 12
+    11/5/2026 9:16:00 PM | tc-tcp-443 | 4 | 0 | 0 | 12
+    11/5/2026 9:18:00 PM | tc-tcp-22 | 4 | 0 | 0 | 12
+    11/5/2026 9:18:00 PM | tc-tcp-443 | 4 | 0 | 0 | 12
+    11/5/2026 9:20:00 PM | tc-tcp-22 | 4 | 0 | 0 | 12
+    11/5/2026 9:20:00 PM | tc-tcp-443 | 1 | 3 | 7 | 12
+    11/5/2026 9:22:00 PM | tc-tcp-22 | 4 | 0 | 0 | 12
+    11/5/2026 9:22:00 PM | tc-tcp-443 | 0 | 4 | 12 | 12
+    11/5/2026 9:24:00 PM | tc-tcp-22 | 1 | 0 | 0 | 3
+    11/5/2026 9:24:00 PM | tc-tcp-443 | 0 | 1 | 3 | 3
+    rows: 20
+  KQL: path result and issues for the failing test (latest)
+    TimeGenerated | PathTestResult | ChecksFailed | ChecksTotal | Issues
+    11/5/2026 9:21:20 PM | Fail | 3 | 3 | ["Error_Outbound_NetworkSecurityRule","Error_Inbound_NetworkSecurityRule","Error_Local_DestinationUnreachable"]
+    rows: 1
+--- 4. INVESTIGATE: connection troubleshoot (on-demand, from vm-nw-hub) ---
+  TCP 443: status=Unreachable probesSent=30 probesFailed=30
+    hop Source           10.0.1.20       issues: Error/NetworkSecurityRule/Outbound key=RuleName
+    hop VirtualNetwork   10.1.1.20       issues: Error/NetworkSecurityRule/Inbound key=RuleName,value=/subscriptions/<guid>/resourceGroups/rg-hubspoke-lab/providers/Microsoft.Network/networkSecurityGroups/nsg-spoke1-workload/SecurityRules/Deny-VNet-Inbound
+  TCP 22: status=Reachable probesSent=66 probesFailed=0
+    hop Source           10.0.1.20       issues: none
+    hop VirtualNetwork   10.1.1.20       issues: none
+--- 5. INVESTIGATE: IP flow verify (inbound on vm-nw-spoke1 from vm-nw-hub) ---
+  TCP 443: access=Deny rule=Deny-VNet-Inbound
+  TCP 22: access=Allow rule=Allow-Mgmt-From-Shared
+--- 6. INVESTIGATE: flow log records for 443 since the change ---
+  443 since change: state/rule = B, PlatformRule                               count=3
+  443 since change: state/rule = B, UserRule_Allow-HTTPS-From-Hub              count=88
+  443 since change: state/rule = D, UserRule_Deny-VNet-Inbound                 count=253
+  443 since change: state/rule = E, UserRule_Allow-HTTPS-From-Hub              count=88
+--- 7. INVESTIGATE: does live still match the code? (Project 1 what-if, NSG lines) ---
+      ~ Microsoft.Network/networkSecurityGroups/nsg-spoke1-workload [2026-01-01]
+            ~ properties.destinationPortRange: "8443" => "443"
+      = Microsoft.Network/networkSecurityGroups/nsg-spoke2-workload [2026-01-01]
+  Resource changes: 8 to modify, 3 no change.
+--- 8. Traffic Analytics re-check (the M2 flows from 15:44) ---
+  KQL: NTANetAnalytics rows for the two VMs
+    DestPort | FlowStatus | AclRule | records
+    rows: 0
+  KQL: NTANetAnalytics status messages (processing errors, if any)
+    TimeGenerated | Status | Description
+    rows: 0
+  leak check (should be 0): 0
+--- FIX (portal): Allow-HTTPS-From-Hub destination port 8443 -> 443 ---
+  latest rule write (the fix): 16:20:36 rule=Allow-HTTPS-From-Hub
+  Allow-HTTPS-From-Hub now: priority=100 access=Allow src=10.0.0.0/16 port=443
+--- VERIFY 1: IP flow verify and connection troubleshoot on 443 ---
+  IP flow verify TCP 443: access=Allow rule=Allow-HTTPS-From-Hub
+  connection troubleshoot TCP 443: status=Reachable probesFailed=0/66 avgLatencyMs=3
+--- VERIFY 2: wait for the alert to resolve on its own (stateful metric alert; max 20 min) ---
+  RESOLVED at 16:38:30 (fired 16:23:29)
+  recovery time (fix saved -> alert resolved): 17.9 min
+--- VERIFY 3: connection monitor results across the incident ---
+  KQL: test results per 2 min, last 40 min
+    TimeGenerated | TestConfigurationName | passed | failed
+    11/5/2026 9:06:00 PM | tc-tcp-22 | 1 | 0
+    11/5/2026 9:06:00 PM | tc-tcp-443 | 1 | 0
+    11/5/2026 9:08:00 PM | tc-tcp-22 | 4 | 0
+    11/5/2026 9:08:00 PM | tc-tcp-443 | 4 | 0
+    11/5/2026 9:10:00 PM | tc-tcp-22 | 4 | 0
+    11/5/2026 9:10:00 PM | tc-tcp-443 | 4 | 0
+    11/5/2026 9:12:00 PM | tc-tcp-22 | 4 | 0
+    11/5/2026 9:12:00 PM | tc-tcp-443 | 4 | 0
+    11/5/2026 9:14:00 PM | tc-tcp-22 | 4 | 0
+    11/5/2026 9:14:00 PM | tc-tcp-443 | 4 | 0
+    11/5/2026 9:16:00 PM | tc-tcp-22 | 4 | 0
+    11/5/2026 9:16:00 PM | tc-tcp-443 | 4 | 0
+    11/5/2026 9:18:00 PM | tc-tcp-22 | 4 | 0
+    11/5/2026 9:18:00 PM | tc-tcp-443 | 4 | 0
+    11/5/2026 9:20:00 PM | tc-tcp-22 | 4 | 0
+    11/5/2026 9:20:00 PM | tc-tcp-443 | 1 | 3
+    11/5/2026 9:22:00 PM | tc-tcp-22 | 4 | 0
+    11/5/2026 9:22:00 PM | tc-tcp-443 | 0 | 4
+    11/5/2026 9:24:00 PM | tc-tcp-22 | 4 | 0
+    11/5/2026 9:24:00 PM | tc-tcp-443 | 0 | 4
+    11/5/2026 9:26:00 PM | tc-tcp-22 | 4 | 0
+    11/5/2026 9:26:00 PM | tc-tcp-443 | 0 | 4
+    11/5/2026 9:28:00 PM | tc-tcp-22 | 4 | 0
+    11/5/2026 9:28:00 PM | tc-tcp-443 | 4 | 0
+    11/5/2026 9:30:00 PM | tc-tcp-22 | 4 | 0
+    11/5/2026 9:30:00 PM | tc-tcp-443 | 4 | 0
+    11/5/2026 9:32:00 PM | tc-tcp-22 | 4 | 0
+    11/5/2026 9:32:00 PM | tc-tcp-443 | 4 | 0
+    11/5/2026 9:34:00 PM | tc-tcp-22 | 4 | 0
+    11/5/2026 9:34:00 PM | tc-tcp-443 | 4 | 0
+    11/5/2026 9:36:00 PM | tc-tcp-22 | 4 | 0
+    11/5/2026 9:36:00 PM | tc-tcp-443 | 4 | 0
+    11/5/2026 9:38:00 PM | tc-tcp-22 | 3 | 0
+    11/5/2026 9:38:00 PM | tc-tcp-443 | 3 | 0
+    rows: 34
+--- VERIFY 4: the web app from the hub VM ---
+  HTTP 443: 10/10 succeeded
+--- VERIFY 5: code and live match again (Project 1 what-if, NSG lines) ---
+      = Microsoft.Network/networkSecurityGroups/nsg-spoke1-workload [2026-01-01]
+      = Microsoft.Network/networkSecurityGroups/nsg-spoke2-workload [2026-01-01]
+  Resource changes: 7 to modify, 4 no change.
+  leak check (should be 0): 0
+--- CORRECTION: recovery timeline (the 17.9 min above used the BREAK event as the fix - the fix's event hadn't reached the activity log yet) ---
+  rule write 16:20:36  Allow-HTTPS-From-Hub
+  rule write 16:27:49  Allow-HTTPS-From-Hub
+  rule write 16:27:58  Allow-HTTPS-From-Hub
+  TIMELINE: break 16:27:49 -> alert fired 16:23:29 (detect -4.3 min) -> fix 16:27:58 -> alert resolved 16:38:30 (resolve 10.5 min after fix); outage 0.2 min
+  why resolve takes ~10 min: metric alerts resolve after 3 consecutive evaluations with the condition false (Microsoft docs); with a 5-min window on Maximum, the last Fail must first age out of the window.
+  open (unexplained tool output): connection troubleshoot listed Error/NetworkSecurityRule/Outbound at the Source hop with no rule name; the hub subnet has no NSG. Not treated as a finding.
+--- CORRECTION 2: timeline (the line above picked writes[-2] as the break; there were 3 writes: break 16:20:36, fix 16:27:49 + a second write 16:27:58) ---
+  TIMELINE: break 16:20:36 -> alert FIRED 16:23:29 (detect 2.9 min; email received) -> fix 16:27:49 (second write 16:27:58, cause unknown - likely a second save) -> 443 tests pass from the 16:28 bucket -> alert RESOLVED 16:38:30 (10.7 min after the fix). Outage 7.2 min.

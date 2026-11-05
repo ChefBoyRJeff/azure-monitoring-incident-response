@@ -1,0 +1,40 @@
+=== Lab 4 M3: connection monitor + alert (built in the portal), 2026-11-05 16:09 ===
+  note: first run of this block (16:08) printed nothing after step 2 - my Kql function returned its log lines with the count; fixed. KQL also used reserved word 'first' as a column name; renamed.
+--- 1. connection monitor configuration ---
+  state=Succeeded output workspace=law-monitoring-lab
+  endpoint vm-nw-hub(rg-netwatch-lab) -> vm-nw-hub
+  endpoint vm-nw-spoke1(rg-netwatch-lab) -> vm-nw-spoke1
+  test config tc-tcp-443: Tcp port 443 every 30s thresholds failed%=5 rttMs=100
+  test config tc-tcp-22: Tcp port 22 every 30s thresholds failed%=5 rttMs=100
+  test group tg-hub-to-spoke1: sources=vm-nw-hub(rg-netwatch-lab) destinations=vm-nw-spoke1(rg-netwatch-lab) tests=tc-tcp-443,tc-tcp-22 disabled=False
+--- 2. alert rule created with it (portal auto-named it) ---
+  cm-hub-to-spoke1 (rg=networkwatcherrg) enabled=True sev=3 metric=TestResult GreaterThan 2 agg=Maximum window=PT5M freq=PT1M actionGroups=AG-LAB-OPS
+  TestResult metric values: 1 = Pass, 2 = Warning, 3 = Fail, so 'GreaterThan 2' fires on Fail
+--- 3. wait for the first test results in the workspace (max 15 min) ---
+  KQL: NWConnectionMonitorTestResult rows so far
+    rows
+    4
+    rows: 1
+  first results in the workspace after 0 min of waiting
+--- 4. connection monitor results (KQL) ---
+  KQL: results by test (last 30 min)
+    TestGroupName | TestConfigurationName | records | passed | failed | avgRttMs | firstSeen | lastSeen
+    tg-hub-to-spoke1 | tc-tcp-22 | 3 | 3 | 0 | 3.77 | 11/5/2026 9:08:10 PM | 11/5/2026 9:09:40 PM
+    tg-hub-to-spoke1 | tc-tcp-443 | 3 | 3 | 0 | 1.68 | 11/5/2026 9:08:10 PM | 11/5/2026 9:09:40 PM
+    rows: 2
+--- 5. connection monitor metrics (platform metrics, last 30 min) ---
+  TestResult           tc-tcp-22    latest avg=1 max=1 at 16:09
+  TestResult           tc-tcp-443   latest avg=1 max=1 at 16:09
+  ChecksFailedPercent  tc-tcp-22    latest avg=0 max=0 at 16:09
+  ChecksFailedPercent  tc-tcp-443   latest avg=0 max=0 at 16:09
+  RoundTripTimeMs      tc-tcp-22    latest avg=4.503555555555554 max=9.157 at 16:09
+  RoundTripTimeMs      tc-tcp-443   latest avg=1.947 max=10.091 at 16:09
+--- 6. Traffic Analytics: the M2 flows, now in KQL (10-min processing + ingestion; may lag) ---
+  KQL: NTANetAnalytics hub VM -> spoke VM
+    DestPort | FlowStatus | AclRule | FlowType | records | allowedIn | deniedIn | flowStart | processed | ingested
+    rows: 0
+  no Traffic Analytics rows yet - expected if under ~20-30 min since the 15:44 traffic; re-checked in M4
+  KQL: billable data in the workspace today (cap is 0.1 GB)
+    DataType | MB
+    rows: 0
+  leak check (should be 0): 0
